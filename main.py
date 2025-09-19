@@ -24,24 +24,25 @@ class killer(Interacter):
 class giver(Interacter):
     pass
 
+
+class getter(Interacter):
+    pass
+
 class Image:
-    def __init__(self, images: list, rate: int = 60):
+    def __init__(self, images: list, ratio: list, rate: int = 60):
+        self.images_origin = images
         self.images = images
-        self.__current = images[0]
+
+        self.__ratio = ratio
 
         self.length = len(self.images)
         self.__number = 0
 
-        self.__change_max_late = rate
-        self.__change_late = rate
+        self.change_max_late = rate
+        self.change_late = rate
 
-    @property
-    def change_max_late(self):
-        return self.__change_max_late
-
-    @change_max_late.setter
-    def change_max_late(self, n):
-        self.__change_max_late = n
+        self.ratio_update()
+        self.__current = images[0]
 
     @property
     def current(self):
@@ -52,13 +53,33 @@ class Image:
         self.__number = n % self.length
         self.__current = self.images[self.__number]
 
-    def change(self, n):
-        self.__change_late = (self.__change_late + 1) % self.__change_max_late
-        if self.__change_late == 0:
-            self.current = self.__number + 1
+    @property
+    def ratio(self):
+        return self.__ratio
+    @ratio.setter
+    def size(self, n):
+        self.__ratio = n
+
+
+    def change(self):
+        self.change_late = (self.change_late + 1) % self.change_max_late
+        if self.change_late == 0:
+            self.__number += 1
+        self.current = self.__number
+
+    def turn_to(self, angle):
+        for i in range(self.length):
+            self.images[i] = pygame.transform.rotate(self.images_origin[i], angle)
+
+    def ratio_update(self):
+        for i in range(self.length):
+            self.images[i] = pygame.transform.scale(self.images_origin[i], (PacMan_data.SIZE_X * self.ratio, PacMan_data.SIZE_Y * self.ratio))
+
+    def get_rect(self, x, y, z):
+        return self.images[0].get_rect(center= (x, y))
 
 class All(ABC):
-    def __init__(self, coordinate: np.array[float], direction: float):
+    def __init__(self, coordinate: np.array, direction: float):
         self.coordinate = coordinate
         self.direction = direction
 
@@ -70,23 +91,26 @@ class All(ABC):
 
 # main three class
 class Unit(All):
-    def __init__(self, coordinate: np.array[float], direction: float, speed: np.array[float], images: list = []):
+    def __init__(self, coordinate: np.array, direction: float, speed: np.array, images: list = [], ratio: float = 1):
         super().__init__(coordinate, direction)
         self.speed = speed
-        self.image = Image(images)
+        self.image = Image(images, ratio)
 
     def move(self, fps):
         self.coordinate += self.speed/fps
 
-    def turn(self, angle):
-        self.direction = (self.direction + angle) % (2 * math.pi)
+    def turn_to(self, angle, speed):
+        self.image.turn_to(angle - self.direction)
+        self.direction = angle
+        rad = angle * math.pi / 180
+        self.speed = np.array([speed * math.cos(rad), -speed * math.sin(rad), 0])
 
-    def draw(self, screen: pygame.display):
-        screen.bilt(self.image.current)
+    def draw(self, screen: pygame.surface.Surface):
+        screen.blit(self.image.current, self.image.get_rect(*self.coordinate))
 
 
 class Structure(All):
-    def __init__(self, coordinate: np.array[float], direction: float):
+    def __init__(self, coordinate: np.array, direction: float):
         super().__init__(coordinate, direction)
 
 
@@ -95,7 +119,7 @@ class Structure(All):
 
 
 class Item(All):
-    def __init__(self, coordinate: np.array[float], direction: float, interacter: Interacter, images: list = []):
+    def __init__(self, coordinate: np.array, direction: float, interacter: Interacter, images: list = []):
         super().__init__(coordinate, direction)
         self.interacter = interacter
         self.image = Image(images)
@@ -120,9 +144,8 @@ class Trap(Structure):
 
 
 class PacMan(Unit):
-    def __init__(self):
-        super().__init__()
-        pass
+    def __init__(self, coordinate: np.array, direction: float, speed: np.array, images: list = [], ratio: float = 1):
+        super().__init__(coordinate, direction, speed, images, ratio)
 
 
 
@@ -132,12 +155,22 @@ class ghost(Unit):
 
 
 class Main:
-    def __init__(self):
+    def __init__(self, fps, show_fps = False):
         self.thread = Thread(target=self.back_loop)
         self.thread.start()
 
+        self.clock = pygame.time.Clock()
+        self.fps = fps
+        self.show_fps = show_fps
+
         self.main_state = 0
-        pass
+        self.running = True
+
+        self.font = pygame.font.SysFont("Arial", 24)
+
+        self.pacman = PacMan(*PacMan_data.INIT_PACK)
+        self.last_command = ""
+
 
     def reset(self):
         pass
@@ -145,10 +178,44 @@ class Main:
     def back_loop(self):
         pass
 
-    def loop(self, screen):
-        pass
+    def loop(self, screen: pygame.surface.Surface):
+        while self.running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.running = False
+
+                    elif event.key == pygame.K_DOWN:
+                        self.pacman.turn_to(270, PacMan_data.ABS_SPEED)
+                    elif event.key == pygame.K_LEFT:
+                        self.pacman.turn_to(180, PacMan_data.ABS_SPEED)
+                    elif event.key == pygame.K_UP:
+                        self.pacman.turn_to(90, PacMan_data.ABS_SPEED)
+                    elif event.key == pygame.K_RIGHT:
+                        self.pacman.turn_to(0, PacMan_data.ABS_SPEED)
+
+            screen.fill(Screen_data.COLOR)
+
+            #self.pacman.move(self.fps)
+
+            self.pacman.image.change()
+            self.pacman.draw(screen)
 
 
-if "__name__"=="__main__":
+
+
+            self.clock.tick(self.fps)
+            if self.show_fps:
+                fps_text = self.font.render(f"FPS: {self.clock.get_fps():0.2f}", True, (255, 255, 255))
+                screen.blit(fps_text, (10, 10))
+            pygame.display.flip()
+
+
+if __name__=="__main__":
     pygame.init()
-    SCREEN = pygame.display
+    screen = pygame.display.set_mode((Screen_data.WIDTH, Screen_data.HEIGHT))
+    MainScreen = Main(60, show_fps=True)
+    MainScreen.loop(screen)
