@@ -5,8 +5,9 @@ import numpy as np
 pygame.init()
 
 
-RATIO = 10
-
+UNIT_RATIO = 2
+UNIT_SIZE = 26
+IMG_PATH = "data/imgs"
 
 # ----------------------
 # Screen
@@ -22,15 +23,18 @@ class Screen_data:
 # ----------------------
 class PacMan_data:
     IMAGES = [
-        pygame.image.load("data/imgs/Pac-Man/1.png")
+        pygame.image.load(f"{IMG_PATH}/Pac-Man/1.png"),
+        pygame.image.load(f"{IMG_PATH}/Pac-Man/2.png")
     ]
-    ABS_SPEED = 180
+    ABS_SPEED = UNIT_SIZE * UNIT_RATIO * 5
     SPEED = np.array([ABS_SPEED, 0, 0])
     COORDINATE = np.array([Screen_data.WIDTH/2, Screen_data.HEIGHT/2, 0])
     DIRECTION = 0
-    RATIO = RATIO
-    SIZE_X = 26
-    SIZE_Y = 26
+    RATIO = UNIT_RATIO
+    SIZE_X = UNIT_SIZE
+    SIZE_Y = UNIT_SIZE
 
-    INIT_PACK = (COORDINATE, DIRECTION, SPEED, IMAGES, RATIO)
+    RATE = 5
+
+    INIT_PACK = (COORDINATE, DIRECTION, SPEED, IMAGES, RATIO, RATE)
 

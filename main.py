@@ -5,8 +5,31 @@ import json
 import pygame
 import numpy as np
 from constant import *
+import algorithm
 from abc import ABC, abstractmethod
 from threading import Thread
+from collections import deque
+
+
+
+
+class Command_list:
+    def __init__(self, max_len = 10):
+        self.queue = deque({})
+        self.max_len = max_len
+
+    def append(self, command):
+        if len(self.queue) == self.max_len:
+            self.queue.popleft()
+        self.queue.append(command)
+
+    def check(self, cmd: list):
+        cmd_len = len(cmd)
+        for start in range(len(self.queue) - cmd_len + 1):
+            li = [cmd[i] == self.queue[start + i] for i in range(cmd_len)]
+            if False not in li:
+                return True
+        return False
 
 
 
@@ -21,11 +44,11 @@ class killer(Interacter):
     pass
 
 
-class giver(Interacter):
+class Giver(Interacter):
     pass
 
 
-class getter(Interacter):
+class Getter(Interacter):
     pass
 
 class Image:
@@ -91,10 +114,10 @@ class All(ABC):
 
 # main three class
 class Unit(All):
-    def __init__(self, coordinate: np.array, direction: float, speed: np.array, images: list = [], ratio: float = 1):
+    def __init__(self, coordinate: np.array, direction: float, speed: np.array, images: list = [], ratio: float = 1, rate: int = 60):
         super().__init__(coordinate, direction)
         self.speed = speed
-        self.image = Image(images, ratio)
+        self.image = Image(images, ratio, rate= rate)
 
     def move(self, fps):
         self.coordinate += self.speed/fps
@@ -130,28 +153,48 @@ class Item(All):
 
 
 # --------------------------------
-
+class Grid(Structure):
+    def __init__(self, coordinate: np.array, direction: float):
+        super().__init__(coordinate, direction)
 
 class wall(Structure):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, coordinate, direction):
+        super().__init__(coordinate, direction)
 
 
 class Trap(Structure):
-    def __init__(self):
-        super().__init__()
+    pass
 
 
 
 class PacMan(Unit):
-    def __init__(self, coordinate: np.array, direction: float, speed: np.array, images: list = [], ratio: float = 1):
-        super().__init__(coordinate, direction, speed, images, ratio)
+    def __init__(self, coordinate: np.array, direction: float, speed: np.array, images: list = [], ratio: float = 1, rate: int = 60):
+        super().__init__(coordinate, direction, speed, images, ratio, rate)
 
 
 
-class ghost(Unit):
-    def __init__(self):
-        super().__init__()
+class Ghost(Unit):
+    def __init__(self, coordinate: np.array, direction: float, speed: np.array, algorithm: Interacter, images = [], ratio = 1, rate = 60):
+        super().__init__(coordinate, direction, speed, images, ratio, rate)
+        self.interect = killer()
+        self.algorithm = algorithm
+
+# red
+class Blinky(Ghost):
+    pass
+
+# pink
+class Pinky(Ghost):
+    pass
+
+# cyan
+class Lnky(Ghost):
+    pass
+
+# orange
+class Clyde(Ghost):
+    pass
+
 
 
 class Main:
@@ -170,6 +213,7 @@ class Main:
 
         self.pacman = PacMan(*PacMan_data.INIT_PACK)
         self.last_command = ""
+        self.command_list = Command_list(max_len= 10)
 
 
     def reset(self):
@@ -185,6 +229,8 @@ class Main:
                     self.running = False
 
                 if event.type == pygame.KEYDOWN:
+                    self.command_list.append(event.key)
+
                     if event.key == pygame.K_ESCAPE:
                         self.running = False
 
@@ -199,7 +245,7 @@ class Main:
 
             screen.fill(Screen_data.COLOR)
 
-            #self.pacman.move(self.fps)
+            self.pacman.move(self.fps)
 
             self.pacman.image.change()
             self.pacman.draw(screen)
