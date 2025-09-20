@@ -106,6 +106,12 @@ class All(ABC):
         self.coordinate = coordinate
         self.direction = direction
 
+    def __getitem__(self, index):
+        if index == 0:
+            return self.coordinate[0]
+        elif index == 1:
+            return self.coordinate[1]
+
     @abstractmethod
     def draw(self, screen: pygame.display):
         pass
@@ -121,6 +127,9 @@ class Unit(All):
 
     def move(self, fps):
         self.coordinate += self.speed/fps
+
+    def move_to(self, x, y, z= 0):
+        self.coordinate = np.array([x, y, z])
 
     def turn_to(self, angle, speed):
         self.image.turn_to(angle - self.direction)
@@ -153,9 +162,95 @@ class Item(All):
 
 
 # --------------------------------
+class Line:
+    def __init__(self, start, end, color=(0, 0, 0), width = 1):
+        self.start = start
+        self.end = end
+
+        self.width = width
+        self.color = color
+
+    def draw(self, screen):
+        pygame.draw.line(screen, self.color, self.start, self.end, self.width)
+
+class Point:
+    def __init__(self, x, y, radius = 1, color = (0, 0, 0)):
+        self.x = x
+        self.y = y
+
+        self.radius = radius
+        self.color = color
+
+    def __getitem__(self, index):
+        if index == 0:
+            return self.x
+        elif index == 1:
+            return self.y
+        else:
+            raise IndexError("Point only supports index 0 and 1")
+
+    def length(self, x, y):
+        return math.sqrt((x - self.x) ** 2 + (y - self.y) ** 2)
+
+
+    def draw(self, screen):
+        pygame.draw.circle(screen, self.color, (self.x, self.y), self.radius)
+
+
 class Grid(Structure):
-    def __init__(self, coordinate: np.array, direction: float):
+    def __init__(self, coordinate: np.array, direction: float, size: tuple[list], gap: float = UNIT_SIZE * UNIT_RATIO):
         super().__init__(coordinate, direction)
+        self.gap = gap
+        self.map_x = size[0] * gap
+        self.map_y = size[1] * gap
+        self.block_x = size[0]
+        self.block_y = size[1]
+
+        self.color = (255, 255, 255)
+
+        dx = self.block_x/2 * gap
+        dy = self.block_y/2 * gap
+
+        self.start_point = (coordinate[0] - dx, coordinate[1] - dy)
+        self.end_point = (coordinate[0] + dx, coordinate[1] + dy)
+
+        self.row = []
+        self.column = []
+        self.points = []
+        self.update()
+
+    def update(self):
+        self.row = []
+        self.column = []
+        self.points = []
+        for i in range(self.block_x + 1):
+            x = self.start_point[0] + i * self.gap
+            self.column.append(Line((x, self.start_point[1]), (x, self.end_point[1]), color= self.color))
+        for i in range(self.block_y + 1):
+            y = self.start_point[1] + i * self.gap
+            self.column.append(Line((self.start_point[0], y), (self.end_point[0], y), color= self.color))
+
+        for i in range(self.block_y):
+            y = self.start_point[1] + (i + 0.5) * self.gap
+            for j in range(self.block_x):
+                x = self.start_point[0] + (j + 0.5) * self.gap
+                self.points.append(Point(x, y, color= (100,255,100)))
+
+    def check(self, unit: Unit):
+        x, y = unit.coordinate[0] - self.start_point[0], unit.coordinate[1] - self.end_point[1]
+        block_x, block_y = int(x//self.gap), int(y//self.gap)
+        return self.points[block_y * self.block_x + block_x]
+
+
+    def draw(self, screen):
+        for line in self.row:
+            line.draw(screen)
+        for line in self.column:
+            line.draw(screen)
+        for point in self.points:
+            point.draw(screen)
+        pygame.draw.circle(screen, (255, 100, 100), self.start_point, 5)
+        pygame.draw.circle(screen, (255, 100, 100), self.end_point, 5)
 
 class wall(Structure):
     def __init__(self, coordinate, direction):
@@ -198,7 +293,9 @@ class Clyde(Ghost):
 
 
 class Main:
-    def __init__(self, fps, show_fps = False):
+    def __init__(self, width, height, fps, show_fps = False):
+        self.screen_width, self.screen_height = width, height
+
         self.thread = Thread(target=self.back_loop)
         self.thread.start()
 
@@ -214,6 +311,8 @@ class Main:
         self.pacman = PacMan(*PacMan_data.INIT_PACK)
         self.last_command = ""
         self.command_list = Command_list(max_len= 10)
+
+        self.grid = Grid((self.screen_width/2, self.screen_height/2), 0, (12, 10), UNIT_RATIO * UNIT_SIZE*3/2)
 
 
     def reset(self):
@@ -245,10 +344,19 @@ class Main:
 
             screen.fill(Screen_data.COLOR)
 
-            self.pacman.move(self.fps)
+            self.grid.draw(screen)
+            self.grid.update()
 
+
+            self.pacman.move(self.fps)
             self.pacman.image.change()
             self.pacman.draw(screen)
+
+            # pacman coordinate check code
+            pygame.draw.circle(screen, (100, 100, 255), (self.pacman[0], self.pacman[1]), 8)
+            a = self.grid.check(self.pacman)
+            a.radius = 10
+            a.draw(screen)
 
 
 
@@ -263,5 +371,5 @@ class Main:
 if __name__=="__main__":
     pygame.init()
     screen = pygame.display.set_mode((Screen_data.WIDTH, Screen_data.HEIGHT))
-    MainScreen = Main(60, show_fps=True)
+    MainScreen = Main(Screen_data.WIDTH, Screen_data.HEIGHT, 60, show_fps=True)
     MainScreen.loop(screen)
