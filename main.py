@@ -189,7 +189,7 @@ class Point:
         else:
             raise IndexError("Point only supports index 0 and 1")
 
-    def length(self, x, y):
+    def distance(self, x, y, z):
         return math.sqrt((x - self.x) ** 2 + (y - self.y) ** 2)
 
 
@@ -237,9 +237,9 @@ class Grid(Structure):
                 self.points.append(Point(x, y, color= (100,255,100)))
 
     def check(self, unit: Unit):
-        x, y = unit.coordinate[0] - self.start_point[0], unit.coordinate[1] - self.end_point[1]
+        x, y = unit.coordinate[0] - self.start_point[0], unit.coordinate[1] - self.start_point[1]
         block_x, block_y = int(x//self.gap), int(y//self.gap)
-        return self.points[block_y * self.block_x + block_x]
+        return self.points[min(max(0, block_y), self.block_y-1) * self.block_x + min(max(0, block_x), self.block_x-1)]
 
 
     def draw(self, screen):
@@ -308,11 +308,13 @@ class Main:
 
         self.font = pygame.font.SysFont("Arial", 24)
 
+        self.grid = Grid((self.screen_width/2, self.screen_height/2), 0, (12, 10), UNIT_RATIO * UNIT_SIZE*3/2)
+
         self.pacman = PacMan(*PacMan_data.INIT_PACK)
-        self.last_command = ""
+        self.pacman.move_to(self.grid.points[0][0], self.grid.points[0][1])
+        self.last_move_command = None
         self.command_list = Command_list(max_len= 10)
 
-        self.grid = Grid((self.screen_width/2, self.screen_height/2), 0, (12, 10), UNIT_RATIO * UNIT_SIZE*3/2)
 
 
     def reset(self):
@@ -333,14 +335,11 @@ class Main:
                     if event.key == pygame.K_ESCAPE:
                         self.running = False
 
-                    elif event.key == pygame.K_DOWN:
-                        self.pacman.turn_to(270, PacMan_data.ABS_SPEED)
-                    elif event.key == pygame.K_LEFT:
-                        self.pacman.turn_to(180, PacMan_data.ABS_SPEED)
-                    elif event.key == pygame.K_UP:
-                        self.pacman.turn_to(90, PacMan_data.ABS_SPEED)
-                    elif event.key == pygame.K_RIGHT:
-                        self.pacman.turn_to(0, PacMan_data.ABS_SPEED)
+                    if event.key in [pygame.K_RIGHT, pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN]:
+                        print(1)
+                        self.last_move_command = event.key
+
+
 
             screen.fill(Screen_data.COLOR)
 
@@ -352,18 +351,33 @@ class Main:
             self.pacman.image.change()
             self.pacman.draw(screen)
 
+
+            current_point = self.grid.check(self.pacman)
             # pacman coordinate check code
             pygame.draw.circle(screen, (100, 100, 255), (self.pacman[0], self.pacman[1]), 8)
-            a = self.grid.check(self.pacman)
-            a.radius = 10
-            a.draw(screen)
+            current_point.radius = 10
+            current_point.draw(screen)
 
+            distance = current_point.distance(*self.pacman.coordinate)
+            if distance <= 5:
+                if self.last_move_command == pygame.K_DOWN:
+                    self.pacman.turn_to(270, PacMan_data.ABS_SPEED)
+                    self.pacman.move_to(current_point[0], self.pacman[1])
+                elif self.last_move_command == pygame.K_LEFT:
+                    self.pacman.turn_to(180, PacMan_data.ABS_SPEED)
+                    self.pacman.move_to(self.pacman[0], current_point[1])
+                elif self.last_move_command == pygame.K_UP:
+                    self.pacman.turn_to(90, PacMan_data.ABS_SPEED)
+                    self.pacman.move_to(current_point[0], self.pacman[1])
+                elif self.last_move_command == pygame.K_RIGHT:
+                    self.pacman.turn_to(0, PacMan_data.ABS_SPEED)
+                    self.pacman.move_to(self.pacman[0], current_point[1])
 
 
 
             self.clock.tick(self.fps)
             if self.show_fps:
-                fps_text = self.font.render(f"FPS: {self.clock.get_fps():0.2f}", True, (255, 255, 255))
+                fps_text = self.font.render(f"FPS: {self.clock.get_fps():0.2f}, {distance}", True, (255, 255, 255))
                 screen.blit(fps_text, (10, 10))
             pygame.display.flip()
 
