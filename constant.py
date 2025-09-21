@@ -8,6 +8,7 @@ pygame.init()
 UNIT_RATIO = 2
 UNIT_SIZE = 26
 IMG_PATH = "data/imgs"
+JUDGMENT_DISTANCE = 5
 
 # ----------------------
 # Screen

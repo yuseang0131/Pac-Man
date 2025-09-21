@@ -192,6 +192,12 @@ class Point:
     def distance(self, x, y, z):
         return math.sqrt((x - self.x) ** 2 + (y - self.y) ** 2)
 
+    def distance_x(self, x):
+        return abs(x - self.x)
+
+    def distance_y(self, y):
+        return abs(y - self.y)
+
 
     def draw(self, screen):
         pygame.draw.circle(screen, self.color, (self.x, self.y), self.radius)
@@ -306,6 +312,8 @@ class Main:
         self.main_state = 0
         self.running = True
 
+        self.judgment_distance = JUDGMENT_DISTANCE
+
         self.font = pygame.font.SysFont("Arial", 24)
 
         self.grid = Grid((self.screen_width/2, self.screen_height/2), 0, (12, 10), UNIT_RATIO * UNIT_SIZE*3/2)
@@ -336,7 +344,6 @@ class Main:
                         self.running = False
 
                     if event.key in [pygame.K_RIGHT, pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN]:
-                        print(1)
                         self.last_move_command = event.key
 
 
@@ -359,20 +366,22 @@ class Main:
             current_point.draw(screen)
 
             distance = current_point.distance(*self.pacman.coordinate)
-            if distance <= 5:
+
+            if current_point.distance_x(self.pacman[0]) <= self.judgment_distance:
                 if self.last_move_command == pygame.K_DOWN:
                     self.pacman.turn_to(270, PacMan_data.ABS_SPEED)
                     self.pacman.move_to(current_point[0], self.pacman[1])
-                elif self.last_move_command == pygame.K_LEFT:
-                    self.pacman.turn_to(180, PacMan_data.ABS_SPEED)
-                    self.pacman.move_to(self.pacman[0], current_point[1])
                 elif self.last_move_command == pygame.K_UP:
                     self.pacman.turn_to(90, PacMan_data.ABS_SPEED)
                     self.pacman.move_to(current_point[0], self.pacman[1])
-                elif self.last_move_command == pygame.K_RIGHT:
+
+            if current_point.distance_y(self.pacman[1]) <= self.judgment_distance:
+                if self.last_move_command == pygame.K_RIGHT:
                     self.pacman.turn_to(0, PacMan_data.ABS_SPEED)
                     self.pacman.move_to(self.pacman[0], current_point[1])
-
+                elif self.last_move_command == pygame.K_LEFT:
+                    self.pacman.turn_to(180, PacMan_data.ABS_SPEED)
+                    self.pacman.move_to(self.pacman[0], current_point[1])
 
 
             self.clock.tick(self.fps)
