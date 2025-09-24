@@ -1,26 +1,28 @@
 import math
+import numpy as np
 
+class Unit:
+    def move_to(self, current_coordinate, target_coordinate):
+        pass
 
-class Ghost:
-    pass
-
-
+    def targeting(self, coordinate: np.array):
+        pass
 
 
 # red
-class Blinky(Ghost):
+class Blinky(Unit):
     pass
 
 # pink
-class Pinky(Ghost):
+class Pinky(Unit):
     pass
 
 # cyan
-class Lnky(Ghost):
+class Lnky(Unit):
     pass
 
 # orange
-class Clyde(Ghost):
+class Clyde(Unit):
     pass
 
 

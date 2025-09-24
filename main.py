@@ -1,3 +1,4 @@
+from __future__ import annotations
 import sys
 import os
 import math
@@ -9,6 +10,8 @@ import algorithm
 from abc import ABC, abstractmethod
 from threading import Thread
 from collections import deque
+
+from typing import Iterable
 
 
 
@@ -33,16 +36,28 @@ class Command_list:
 
 
 
-class Interacter:
-    def __init__(self):
-        pass
+class Interacter(ABC):
+    all_unit = UNIT_SET
 
-    def check(self):
+    def __init__(self, target: list[bool], ):
+        self.target = target
+
+    @property
+    def check(self, unit: Unit):
+        if self.target[unit.number]:
+            return True
+        else:
+            return False
+
+    @abstractmethod
+    def active(self, unit: Unit):
         pass
 
 class killer(Interacter):
     pass
 
+class Victim(Interacter):
+    pass
 
 class Giver(Interacter):
     pass
@@ -120,10 +135,33 @@ class All(ABC):
 
 # main three class
 class Unit(All):
-    def __init__(self, coordinate: np.array, direction: float, speed: np.array, images: list = [], ratio: float = 1, rate: int = 60):
+    def __init__(self, coordinate: np.array, direction: float, speed: np.array,
+                 interact: Interacter, algorithm = algorithm.Unit,
+                 images: list = [], ratio: float = 1, rate: int = 60, name: str = "", number: int = -1):
         super().__init__(coordinate, direction)
         self.speed = speed
         self.image = Image(images, ratio, rate= rate)
+        self.interact = interact
+        self.algorithm = algorithm
+
+        self.name = name
+        self.number = number
+
+        self.alive = True
+        self.life = -1
+
+    @property
+    def is_alive(self):
+        return self.alive
+    @is_alive.setter
+    def is_alive(self, interact: killer):
+        if interact.check(self):
+            self.life -= 1
+            self.alive = False
+
+    def revive(self, coordinate: np.array):
+        if not self.alive and self.life > 0:
+            self.algorithm.move_to(coordinate)
 
     def move(self, fps):
         self.coordinate += self.speed/fps
@@ -151,7 +189,8 @@ class Structure(All):
 
 
 class Item(All):
-    def __init__(self, coordinate: np.array, direction: float, interacter: Interacter, images: list = []):
+    def __init__(self, coordinate: np.array, direction: float, interacter: Interacter,
+                 images: list = []):
         super().__init__(coordinate, direction)
         self.interacter = interacter
         self.image = Image(images)
@@ -204,7 +243,8 @@ class Point:
 
 
 class Grid(Structure):
-    def __init__(self, coordinate: np.array, direction: float, size: tuple[list], gap: float = UNIT_SIZE * UNIT_RATIO):
+    def __init__(self, coordinate: np.array, direction: float, size: tuple[list],
+                 gap: float = UNIT_SIZE * UNIT_RATIO):
         super().__init__(coordinate, direction)
         self.gap = gap
         self.map_x = size[0] * gap
@@ -269,32 +309,37 @@ class Trap(Structure):
 
 
 class PacMan(Unit):
-    def __init__(self, coordinate: np.array, direction: float, speed: np.array, images: list = [], ratio: float = 1, rate: int = 60):
-        super().__init__(coordinate, direction, speed, images, ratio, rate)
+    def __init__(self, coordinate: np.array, direction: float, speed: np.array,
+                 interact: Interacter,
+                 images: list = [], ratio: float = 1, rate: int = 60, name: str = "", number: int = -1):
+        super().__init__(coordinate, direction, speed, interact, images, ratio, rate, name=name, number=number)
 
 
 
 class Ghost(Unit):
-    def __init__(self, coordinate: np.array, direction: float, speed: np.array, algorithm: Interacter, images = [], ratio = 1, rate = 60):
-        super().__init__(coordinate, direction, speed, images, ratio, rate)
-        self.interect = killer()
+    def __init__(self, coordinate: np.array, direction: float, speed: np.array,
+                 interact: Interacter,
+                 algorithm: algorithm.Ghost,
+                 images: list = [], ratio: float = 1, rate: int = 60, name: str = "", number: int = -1,):
+        super().__init__(coordinate, direction, speed, interact, images, ratio, rate, name=name, number=number)
         self.algorithm = algorithm
 
 # red
 class Blinky(Ghost):
     pass
 
-# pink
-class Pinky(Ghost):
+# orange
+class Clyde(Ghost):
     pass
 
 # cyan
 class Lnky(Ghost):
     pass
 
-# orange
-class Clyde(Ghost):
+# pink
+class Pinky(Ghost):
     pass
+
 
 
 
@@ -318,7 +363,10 @@ class Main:
 
         self.grid = Grid((self.screen_width/2, self.screen_height/2), 0, (12, 10), UNIT_RATIO * UNIT_SIZE*3/2)
 
-        self.pacman = PacMan(*PacMan_data.INIT_PACK)
+        self.pacman = PacMan(PacMan_data.COORDINATE, PacMan_data.DIRECTION, PacMan_data.SPEED,
+                             Victim, PacMan_data.IMAGES, PacMan_data.RATIO,
+                             PacMan_data.RATE, name=PacMan_data.NAME, number= PacMan_data.NUMBER)
+
         self.pacman.move_to(self.grid.points[0][0], self.grid.points[0][1])
         self.last_move_command = None
         self.command_list = Command_list(max_len= 10)
@@ -350,6 +398,8 @@ class Main:
 
             screen.fill(Screen_data.COLOR)
 
+
+            # map base check
             self.grid.draw(screen)
             self.grid.update()
 
@@ -364,8 +414,6 @@ class Main:
             pygame.draw.circle(screen, (100, 100, 255), (self.pacman[0], self.pacman[1]), 8)
             current_point.radius = 10
             current_point.draw(screen)
-
-            distance = current_point.distance(*self.pacman.coordinate)
 
             if current_point.distance_x(self.pacman[0]) <= self.judgment_distance:
                 if self.last_move_command == pygame.K_DOWN:
@@ -386,7 +434,7 @@ class Main:
 
             self.clock.tick(self.fps)
             if self.show_fps:
-                fps_text = self.font.render(f"FPS: {self.clock.get_fps():0.2f}, {distance}", True, (255, 255, 255))
+                fps_text = self.font.render(f"FPS: {self.clock.get_fps():0.2f}", True, (255, 255, 255))
                 screen.blit(fps_text, (10, 10))
             pygame.display.flip()
 

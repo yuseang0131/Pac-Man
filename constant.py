@@ -9,6 +9,7 @@ UNIT_RATIO = 2
 UNIT_SIZE = 26
 IMG_PATH = "data/imgs"
 JUDGMENT_DISTANCE = 5
+UNIT_SET = ["PacMan", "LadyPacMan", "Blinky", "Clyde", "Lnky", "Pinky"]
 
 # ----------------------
 # Screen
@@ -23,6 +24,9 @@ class Screen_data:
 # Pac-Man
 # ----------------------
 class PacMan_data:
+    NUMBER = 0
+    NAME = "PacMan"
+
     IMAGES = [
         pygame.image.load(f"{IMG_PATH}/Pac-Man/1.png"),
         pygame.image.load(f"{IMG_PATH}/Pac-Man/2.png")
@@ -37,5 +41,24 @@ class PacMan_data:
 
     RATE = 5
 
-    INIT_PACK = (COORDINATE, DIRECTION, SPEED, IMAGES, RATIO, RATE)
 
+
+class Ghost_data:
+    IMAGES_ORDER = ["right.png", "down.png", "left.png", "up.png"]
+    IMAGES = [[] for _ in range(len(IMAGES_ORDER))]
+    for img_i in range(len(IMAGES_ORDER)):
+        for i in ['1', '2']:
+            pass
+            #IMAGES[img_i].append(pygame.image.load(f"{IMG_PATH}/{i}_{IMAGES_ORDER[img_i]}"))
+
+class Blinky:
+    COLOR = (237, 28, 36)
+
+class Clyde:
+    COLOR = (222, 184, 70)
+
+class Lnky:
+    COLOR = (57, 222, 203)
+
+class Pinky:
+    COLOR = (255, 174, 201)
