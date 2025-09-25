@@ -39,28 +39,40 @@ class Command_list:
 class Interacter(ABC):
     all_unit = UNIT_SET
 
-    def __init__(self, target: list[bool], ):
+    def __init__(self, target: list[bool]):
         self.target = target
 
     @property
     def check(self, unit: Unit):
         if self.target[unit.number]:
-            return True
+            return True, self
         else:
-            return False
+            return False, self
 
     @abstractmethod
     def active(self, unit: Unit):
         pass
 
 class killer(Interacter):
-    pass
+    def __init__(self, target):
+        super().__init__(target)
+
+    def active(self, unit: Unit, interacter: Interacter):
+        if interacter is Victim:
+            unit.is_alive = False
 
 class Victim(Interacter):
-    pass
+    def __init__(self, target):
+        super().__init__(target)
+
+    def active(self, unit: Unit, interacter: Interacter):
+        if interacter is killer:
+            unit.is_alive = False
+
 
 class Giver(Interacter):
-    pass
+    def __init__(self, target):
+        super().__init__(target)
 
 
 class Getter(Interacter):
@@ -154,8 +166,8 @@ class Unit(All):
     def is_alive(self):
         return self.alive
     @is_alive.setter
-    def is_alive(self, interact: killer):
-        if interact.check(self):
+    def is_alive(self, alive: bool):
+        if not alive:
             self.life -= 1
             self.alive = False
 
