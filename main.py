@@ -140,9 +140,6 @@ class All(ABC):
     def draw(self, screen: pygame.display):
         pass
 
-class a(pygame.sprite.Sprite):
-    def __init__(self, *groups):
-        super().__init__(*groups)
 
 # main three class
 class Unit(All, pygame.sprite.Sprite):
@@ -433,8 +430,10 @@ class Main:
     def __init__(self, width, height, fps, show_fps = False, show_grid = False):
         self.screen_width, self.screen_height = width, height
         
-        with open(f"data/map/map{self.level}", 'w', encoding="utf-8") as f:
-            self.data = f.read()
+        self.level = 1
+        
+        with open(f"data/map/map{self.level}.json", 'r') as f:
+            self.data = json.load(f)
 
         self.thread = Thread(target=self.back_loop)
         self.thread.start()
