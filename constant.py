@@ -5,8 +5,8 @@ import numpy as np
 pygame.init()
 
 
-UNIT_RATIO = 2
-UNIT_SIZE = 26
+RATIO = 2
+UNIT_SIZE = 28
 IMG_PATH = "data/imgs"
 JUDGMENT_DISTANCE = 5
 UNIT_SET = ["PacMan", "LadyPacMan", "Blinky", "Clyde", "Lnky", "Pinky"]
@@ -20,6 +20,12 @@ class Screen_data:
 
     COLOR = (0, 0, 0)
 
+
+class Grid_data:
+    BLOCK_GAP = 28
+    SPACE_GAP = 12
+
+
 # ----------------------
 # Pac-Man
 # ----------------------
@@ -31,11 +37,11 @@ class PacMan_data:
         pygame.image.load(f"{IMG_PATH}/Pac-Man/1.png"),
         pygame.image.load(f"{IMG_PATH}/Pac-Man/2.png")
     ]
-    ABS_SPEED = UNIT_SIZE * UNIT_RATIO * 5
+    ABS_SPEED = UNIT_SIZE * RATIO * 5
     SPEED = np.array([ABS_SPEED, 0, 0])
     COORDINATE = np.array([Screen_data.WIDTH/2, Screen_data.HEIGHT/2, 0])
     DIRECTION = 0
-    RATIO = UNIT_RATIO
+    RATIO = RATIO
     SIZE_X = UNIT_SIZE
     SIZE_Y = UNIT_SIZE
 
@@ -44,21 +50,31 @@ class PacMan_data:
 
 
 class Ghost_data:
-    IMAGES_ORDER = ["right.png", "down.png", "left.png", "up.png"]
-    IMAGES = [[] for _ in range(len(IMAGES_ORDER))]
-    for img_i in range(len(IMAGES_ORDER)):
-        for i in ['1', '2']:
-            pass
-            #IMAGES[img_i].append(pygame.image.load(f"{IMG_PATH}/{i}_{IMAGES_ORDER[img_i]}"))
+    BLINKY_COLOR = (237, 28, 36)
+    CLYDE_COLOR = (222, 184, 70)
+    LNKY_COLOR = (57, 222, 203)
+    PINKY_COLOR = (255, 174, 201)
 
-class Blinky:
-    COLOR = (237, 28, 36)
+    EYE_IMAGES_ORDER = ["right.png", "up.png", "left.png", "down.png"]
+    BODY_IMAGES_ORDER = ["1.png", "2.png"]
 
-class Clyde:
-    COLOR = (222, 184, 70)
 
-class Lnky:
-    COLOR = (57, 222, 203)
+    def __init__(self, color):
+        self.COLOR = color
+        self.RATIO = RATIO
+        self.EYE_IMGAES = []
+        self.BODY_IMAGES = []
 
-class Pinky:
-    COLOR = (255, 174, 201)
+        for i in Ghost_data.BODY_IMAGES_ORDER:
+            image = pygame.image.load(f"{IMG_PATH}/Ghost/{i}")
+            image.fill(color, special_flags=pygame.BLEND_RGBA_MULT)
+            self.BODY_IMAGES.append(image)
+
+        for i in Ghost_data.EYE_IMAGES_ORDER:
+            self.EYE_IMGAES.append(pygame.image.load(f"{IMG_PATH}/Ghost/{i}"))
+
+
+Blinky_DATA = Ghost_data(Ghost_data.BLINKY_COLOR)
+Clyde_DATA = Ghost_data(Ghost_data.CLYDE_COLOR)
+Lnky_DATA = Ghost_data(Ghost_data.LNKY_COLOR)
+Pinky_DATA = Ghost_data(Ghost_data.PINKY_COLOR)
