@@ -22,8 +22,8 @@ class Screen_data:
 
 
 class Grid_data:
-    BLOCK_GAP = 28
-    SPACE_GAP = 12
+    BLOCK_GAP = 28 + 4
+    SPACE_GAP = 20
 
 
 # ----------------------
