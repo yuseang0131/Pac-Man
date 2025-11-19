@@ -190,10 +190,11 @@ class Unit(All, pygame.sprite.Sprite):
         screen.blit(self.image.current, self.image.get_rect(*self.coordinate))
 
 
-class Item(All):
+class Item(All, pygame.sprite.Sprite):
     def __init__(self, coordinate: np.array, direction: float, interacter: Interacter,
-                 images: list = []):
-        super().__init__(coordinate, direction)
+                 images: list = [], *groups):
+        All.__init__(coordinate, direction)
+        pygame.sprite.Sprite.__init__(*groups)
         self.interacter = interacter
         self.image = Image(images)
 
@@ -353,8 +354,8 @@ class Trap(All):
 class Map:
     def __init__(self, grid: Grid, map_data: dict, grid_show = False):
         self.grid = grid
-        self.walls = []
-        self.objects = map_data["objects"]
+        self.walls = self.load_wall(map_data)
+        self.item: list[All] = self.load_item(map_data)
         
         self.grid_show = grid_show
     
@@ -366,12 +367,18 @@ class Map:
             object.draw(screen)
             
     @staticmethod
-    def make_wall(data):
-        walls = []
-        
-        
+    def load_wall(data):
+        walls: list[list[list[int]]] = algorithm.make_wall(data)
+        #print(f"wqlls: \n{walls}\n-----------------------------")
         
         return walls
+
+    @staticmethod
+    def load_item(data):
+        object_data = data["objects"]
+        object_list = []
+        
+        return object_list
         
 
 
@@ -430,7 +437,7 @@ class Main:
     def __init__(self, width, height, fps, show_fps = False, show_grid = False):
         self.screen_width, self.screen_height = width, height
         
-        self.level = 1
+        self.level = 0
         
         with open(f"data/map/map{self.level}.json", 'r') as f:
             self.data = json.load(f)
@@ -451,8 +458,12 @@ class Main:
         
         self.show_grid = show_grid
         self.grid = Grid((self.screen_width/2, self.screen_height/2), 0, (12, 10))
+        self.current_point = None
         
         self.map = Map(self.grid, self.data, self.show_grid)
+        
+        
+        
 
         # --------------------
         # Pac Man init
@@ -470,6 +481,11 @@ class Main:
                             killer([1, 0, 0, 0, 0, 0]), algorithm.Blinky, Blinky_DATA.EYE_IMGAES,
                             Blinky_DATA.BODY_IMAGES, Blinky_DATA.RATIO, PacMan_data.RATE*2, name="Bilnky", number=2)
         self.blinky.move_to(self.grid.points[-1][0], self.grid.points[-1][1])
+        
+        
+        
+        self.pacman_group = pygame.sprite.Group(self.pacman)
+        self.ghost_gruop = pygame.sprite.Group(self.blinky)
 
         # --------------------
         # command init
@@ -507,45 +523,18 @@ class Main:
             screen.fill(Screen_data.COLOR)
 
 
-            # map base check
-            self.grid.draw(screen)
-            self.grid.update()
 
-
-            self.pacman.move(self.fps)
-            self.pacman.image.change()
-            self.pacman.draw(screen)
-
-
-            self.blinky.draw(screen)
-            self.blinky.image.change()
+            self.update()
+            self.move_unit()
+            self.draw(screen)
             
 
-            current_point: Point = self.grid.check(self.pacman)
+            self.current_point: Point = self.grid.check(self.pacman)
             # pacman coordinate check code
-            pygame.draw.circle(screen, (100, 100, 255), (self.pacman[0], self.pacman[1]), 8)
-            current_point.radius = 10
-            current_point.draw(screen)
+            self.current_point.radius = 10
+            self.current_point.draw(screen)
 
-            if current_point.distance_x(self.pacman[0]) <= self.judgment_distance:
-                if self.last_move_command == pygame.K_DOWN:
-                    self.pacman.turn_to(270, PacMan_data.ABS_SPEED)
-                    self.pacman.move_to(current_point[0], self.pacman[1])
-                    self.blinky.turn_to(270, PacMan_data.ABS_SPEED)
-                elif self.last_move_command == pygame.K_UP:
-                    self.pacman.turn_to(90, PacMan_data.ABS_SPEED)
-                    self.pacman.move_to(current_point[0], self.pacman[1])
-                    self.blinky.turn_to(90, PacMan_data.ABS_SPEED)
-
-            if current_point.distance_y(self.pacman[1]) <= self.judgment_distance:
-                if self.last_move_command == pygame.K_RIGHT:
-                    self.pacman.turn_to(0, PacMan_data.ABS_SPEED)
-                    self.pacman.move_to(self.pacman[0], current_point[1])
-                    self.blinky.turn_to(0, PacMan_data.ABS_SPEED)
-                elif self.last_move_command == pygame.K_LEFT:
-                    self.pacman.turn_to(180, PacMan_data.ABS_SPEED)
-                    self.pacman.move_to(self.pacman[0], current_point[1])
-                    self.blinky.turn_to(180, PacMan_data.ABS_SPEED)
+            
 
 
             self.clock.tick(self.fps)
@@ -553,7 +542,49 @@ class Main:
                 fps_text = self.font.render(f"FPS: {self.clock.get_fps():0.2f}", True, (255, 255, 255))
                 screen.blit(fps_text, (10, 10))
             pygame.display.flip()
+            
+    def move_unit(self):
+        if self.current_point.distance_x(self.pacman[0]) <= self.judgment_distance:
+                if self.last_move_command == pygame.K_DOWN:
+                    self.pacman.turn_to(270, PacMan_data.ABS_SPEED)
+                    self.pacman.move_to(self.current_point[0], self.pacman[1])
+                    self.blinky.turn_to(270, PacMan_data.ABS_SPEED)
+                elif self.last_move_command == pygame.K_UP:
+                    self.pacman.turn_to(90, PacMan_data.ABS_SPEED)
+                    self.pacman.move_to(self.current_point[0], self.pacman[1])
+                    self.blinky.turn_to(90, PacMan_data.ABS_SPEED)
 
+        if self.current_point.distance_y(self.pacman[1]) <= self.judgment_distance:
+            if self.last_move_command == pygame.K_RIGHT:
+                self.pacman.turn_to(0, PacMan_data.ABS_SPEED)
+                self.pacman.move_to(self.pacman[0], self.current_point[1])
+                self.blinky.turn_to(0, PacMan_data.ABS_SPEED)
+            elif self.last_move_command == pygame.K_LEFT:
+                self.pacman.turn_to(180, PacMan_data.ABS_SPEED)
+                self.pacman.move_to(self.pacman[0], self.current_point[1])
+                self.blinky.turn_to(180, PacMan_data.ABS_SPEED)
+
+    def update(self):
+        self.grid.update()
+
+
+        self.pacman.move(self.fps)
+        self.pacman.image.change()
+
+        self.blinky.image.change()
+        
+        self.current_point: Point = self.grid.check(self.pacman)
+    
+    def draw(self, screen: pygame.surface.Surface):
+        screen.fill(Screen_data.COLOR)
+
+        # map base check
+        self.grid.draw(screen)
+
+        self.pacman.draw(screen)
+        pygame.draw.circle(screen, (100, 100, 255), (self.pacman[0], self.pacman[1]), 8)
+
+        self.blinky.draw(screen)
 
 if __name__=="__main__":
     pygame.init()
