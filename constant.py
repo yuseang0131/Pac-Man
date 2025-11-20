@@ -5,8 +5,8 @@ import numpy as np
 pygame.init()
 
 
-RATIO = 2
-UNIT_SIZE = 28
+RATIO = 4
+UNIT_SIZE = 14
 IMG_PATH = "data/imgs"
 JUDGMENT_DISTANCE = 5
 UNIT_SET = ["PacMan", "LadyPacMan", "Blinky", "Clyde", "Lnky", "Pinky"]
@@ -22,8 +22,7 @@ class Screen_data:
 
 
 class Grid_data:
-    BLOCK_GAP = 28 + 4
-    SPACE_GAP = 20
+    BLOCK_GAP = 8
 
 
 # ----------------------
@@ -37,8 +36,8 @@ class PacMan_data:
         pygame.image.load(f"{IMG_PATH}/Pac-Man/1.png"),
         pygame.image.load(f"{IMG_PATH}/Pac-Man/2.png")
     ]
-    ABS_SPEED = UNIT_SIZE * RATIO * 5
-    SPEED = np.array([ABS_SPEED, 0, 0])
+    ABS_SPEED = float(UNIT_SIZE * RATIO * 5)
+    SPEED = np.array([ABS_SPEED, 0.0, 0.0])
     COORDINATE = np.array([Screen_data.WIDTH/2, Screen_data.HEIGHT/2, 0])
     DIRECTION = 0
     RATIO = RATIO

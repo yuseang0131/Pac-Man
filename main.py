@@ -221,6 +221,9 @@ class Point:
 
         self.radius = radius
         self.color = color
+        
+    def __repr__(self):
+        return f"({self.x}, {self.y})"
 
     def __getitem__(self, index):
         if index == 0:
@@ -245,20 +248,18 @@ class Point:
 
 class Grid(All):
     def __init__(self, coordinate: np.array, direction: float, size: tuple[list],
-                 gap: float = RATIO * Grid_data.BLOCK_GAP, space_gap: float = RATIO * Grid_data.SPACE_GAP):
+                 gap: float = RATIO * Grid_data.BLOCK_GAP):
         super().__init__(coordinate, direction)
-        self.space_gap = space_gap
         self.gap = gap
-        g = (gap + space_gap)
-        self.map_x = size[0] * g
-        self.map_y = size[1] * g
+        self.map_x = size[0] * gap
+        self.map_y = size[1] * gap
         self.block_x = size[0]
         self.block_y = size[1]
 
         self.color = (255, 255, 255)
 
-        dx = self.block_x/2 * g
-        dy = self.block_y/2 * g
+        dx = self.block_x/2 * gap
+        dy = self.block_y/2 * gap
 
         self.start_point = (coordinate[0] - dx, coordinate[1] - dy)
         self.end_point = (coordinate[0] + dx, coordinate[1] + dy)
@@ -271,100 +272,57 @@ class Grid(All):
     def update(self):
         self.row = []
         self.column = []
-        self.points = []
+        self.cross_points = []
+        self.center_points = []
         for i in range(self.block_x + 1):
-            x = self.start_point[0] + i * (self.gap + self.space_gap)
+            x = self.start_point[0] + i * self.gap
             self.column.append(Line((x, self.start_point[1]), (x, self.end_point[1]), color= self.color))
         for i in range(self.block_y + 1):
-            y = self.start_point[1] + i * (self.gap + self.space_gap)
+            y = self.start_point[1] + i * self.gap
             self.column.append(Line((self.start_point[0], y), (self.end_point[0], y), color= self.color))
 
         for i in range(self.block_y):
-            y = self.start_point[1] + (i + 0.5) * (self.gap +self.space_gap)
+            y = self.start_point[1] + (i + 0.5) * self.gap
             for j in range(self.block_x):
-                x = self.start_point[0] + (j + 0.5) * (self.gap +self.space_gap)
-                self.points.append(Point(x, y, color= (100,255,100)))
+                x = self.start_point[0] + (j + 0.5) * self.gap
+                self.center_points.append(Point(x, y, color= (100,255,100)))
+                
+        for i in range(self.block_y+1):
+            y = self.start_point[1] + i * self.gap
+            for j in range(self.block_x+1):
+                x = self.start_point[0] + j * self.gap
+                self.cross_points.append(Point(x, y, color= (100,255,255), radius=4))
+
 
     def check(self, unit: Unit):
         x, y = unit.coordinate[0] - self.start_point[0], unit.coordinate[1] - self.start_point[1]
-        block_x, block_y = int(x//(self.gap +self.space_gap)), int(y//(self.gap +self.space_gap))
-        return self.points[min(max(0, block_y), self.block_y-1) * self.block_x + min(max(0, block_x), self.block_x-1)]
+        block_x, block_y = int(x//self.gap), int(y//self.gap)
+        print(block_x, block_y)
+        return self.cross_points[min(max(0, block_y), self.block_y) * (self.block_x+1) + min(max(0, block_x), self.block_x)]
 
     def draw(self, screen):
         for line in self.row:
             line.draw(screen)
         for line in self.column:
             line.draw(screen)
-        for point in self.points:
+        for point in self.center_points:
+            point.draw(screen)
+        for point in self.cross_points:
             point.draw(screen)
         pygame.draw.circle(screen, (255, 100, 100), self.start_point, 5)
         pygame.draw.circle(screen, (255, 100, 100), self.end_point, 5)
 
 class Wall(All):
-    block_gap = 0
-    form = {"middle": None, "right": None, "left": None,
-                "up": None, "down": None}
-
-    def __init__(self, coordinate, direction, line: list[tuple[Point]], in_color: tuple, out_color: tuple, 
-                 block_gap: int, space_gap: int,
-                 ratio: int):
-        super().__init__(coordinate, direction)
-        self.in_color = in_color
-        self.out_color = out_color
-
-        self.line = line
-
-        self.d_size = block_gap+ space_gap
-        self.size = space_gap
-        self.ratio = ratio
-
-    def draw_in(self, screen):
-        d_size = self.d_size * self.ratio
-        size = (self.size - 3) * self.ratio/2
-        t = self.direction
-        for a, b in self.line:
-            a = [a[0] * d_size + self.coordinate[0], a[1] * d_size + self.coordinate[1]]
-            b = [b[0] * d_size + self.coordinate[0], b[1] * d_size + self.coordinate[1]]
-            if a[0] == b[0]: t = math.pi / 2
-            elif a[1] == b[1]: t = 0
-            
-            pygame.draw.polygon(screen, self.in_color, ((a[0] + size * math.sin(t), a[1] + size * math.cos(t)),
-                                (a[0] - size * math.sin(t), a[1] - size * math.cos(t)),
-                                (b[0] - size * math.sin(t), b[1] - size * math.cos(t)),
-                                (b[0] + size * math.sin(t), b[1] + size * math.cos(t))
-                                ))
-            pygame.draw.circle(screen, self.in_color, a, size)
-            pygame.draw.circle(screen, self.in_color, b, size)
-    
-    def draw_out(self, screen):
-        d_size = self.d_size * self.ratio
-        size = self.size * self.ratio/2
-        for a, b in self.line:
-            a = [a[0] * d_size + self.coordinate[0], a[1] * d_size + self.coordinate[1]]
-            b = [b[0] * d_size + self.coordinate[0], b[1] * d_size + self.coordinate[1]]
-            if a[0] == b[0]: t = math.pi / 2
-            elif a[1] == b[1]: t = 0
-            
-            pygame.draw.polygon(screen, self.out_color, ((a[0] + size * math.sin(t), a[1] + size * math.cos(t)),
-                                (a[0] - size * math.sin(t), a[1] - size * math.cos(t)),
-                                (b[0] - size * math.sin(t), b[1] - size * math.cos(t)),
-                                (b[0] + size * math.sin(t), b[1] + size * math.cos(t))
-                                ))
-            pygame.draw.circle(screen, self.out_color, a, size)
-            pygame.draw.circle(screen, self.out_color, b, size)
-
-    def draw(self, screen):
-        self.draw_out(screen)
-        self.draw_in(screen)
+    pass
 
 class Trap(All):
     pass
 
 
 class Map:
-    def __init__(self, grid: Grid, map_data: dict, in_color, out_color, block_gap, space_gap, ratio, grid_show = False):
+    def __init__(self, grid: Grid, map_data: dict, in_color, out_color, block_gap, ratio, grid_show = False):
         self.grid = grid
-        self.walls: list[Wall] = self.load_wall(map_data, in_color, out_color, block_gap, space_gap, ratio)
+        self.walls: list[Wall] = self.load_wall(map_data, in_color, out_color, block_gap, ratio)
         self.item: list[All] = self.load_item(map_data)
         
         self.grid_show = grid_show
@@ -377,12 +335,8 @@ class Map:
             self.grid.draw(screen)
         
             
-    def load_wall(self, data, in_color, out_color, block_gap, space_gap, ratio):
+    def load_wall(self, data, in_color, out_color, block_gap, ratio):
         walls = []
-        walls_data: list[list[list[int]]] = algorithm.make_wall(data)
-        #print(f"wqlls: \n{walls}\n-----------------------------")
-        for wall_data in walls_data:
-            walls.append(Wall(self.grid.start_point, 0, wall_data, in_color, out_color, block_gap, space_gap, ratio))
         
         
         return walls
@@ -471,10 +425,10 @@ class Main:
         self.font = pygame.font.SysFont("Arial", 24)
         
         self.show_grid = show_grid
-        self.grid = Grid((self.screen_width/2, self.screen_height/2), 0, (12, 10))
+        self.grid = Grid((self.screen_width/2, self.screen_height/2), 0, (24, 14))
         self.current_point = None
         
-        self.map = Map(self.grid, self.data, (255, 0, 0), (0, 255, 0), Grid_data.BLOCK_GAP, Grid_data.SPACE_GAP, RATIO, self.show_grid)
+        self.map = Map(self.grid, self.data, (255, 0, 0), (0, 255, 0), Grid_data.BLOCK_GAP, RATIO, self.show_grid)
         
         
         
@@ -486,7 +440,7 @@ class Main:
                              Victim([0, 1, 1, 1, 1 ,1]), algorithm.Unit, PacMan_data.IMAGES,
                              PacMan_data.RATIO,
                              PacMan_data.RATE, name=PacMan_data.NAME, number= PacMan_data.NUMBER)
-        self.pacman.move_to(self.map.grid.points[0][0], self.grid.points[0][1])
+        self.pacman.move_to(self.map.grid.cross_points[0][0], self.grid.cross_points[0][1])
 
         # --------------------
         # Ghost init
@@ -494,7 +448,7 @@ class Main:
         self.blinky = Ghost((self.screen_width/3, self.screen_height/3, 0), 0, 5,
                             killer([1, 0, 0, 0, 0, 0]), algorithm.Blinky, Blinky_DATA.EYE_IMGAES,
                             Blinky_DATA.BODY_IMAGES, Blinky_DATA.RATIO, PacMan_data.RATE*2, name="Bilnky", number=2)
-        self.blinky.move_to(self.map.grid.points[-1][0], self.grid.points[-1][1])
+        self.blinky.move_to(self.map.grid.cross_points[-1][0], self.grid.cross_points[-1][1])
         
         
         
@@ -558,6 +512,9 @@ class Main:
             pygame.display.flip()
             
     def move_unit(self):
+        if self.map.is_wall(self.current_point):
+            return
+        
         if self.current_point.distance_x(self.pacman[0]) <= self.judgment_distance:
                 if self.last_move_command == pygame.K_DOWN:
                     self.pacman.turn_to(270, PacMan_data.ABS_SPEED)
