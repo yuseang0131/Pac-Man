@@ -17,6 +17,7 @@ UNIT_SET = ["PacMan", "LadyPacMan", "Blinky", "Clyde", "Lnky", "Pinky"]
 class Screen_data:
     INFO = pygame.display.Info()
     WIDTH, HEIGHT = INFO.current_w, INFO.current_h
+    WIDTH, HEIGHT = 1080, 720
 
     COLOR = (0, 0, 0)
 

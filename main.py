@@ -233,7 +233,7 @@ class Point:
         else:
             raise IndexError("Point only supports index 0 and 1")
 
-    def distance(self, x, y, z):
+    def distance(self, x, y, z=0):
         return math.sqrt((x - self.x) ** 2 + (y - self.y) ** 2)
 
     def distance_x(self, x):
@@ -293,11 +293,15 @@ class Grid(All):
                 x = self.start_point[0] + j * self.gap
                 self.cross_points.append(Point(x, y, color= (100,255,255), radius=4))
 
+    def get_block_coordinate(self, point: Point):
+        x, y = point[0] - self.start_point[0], point[1] - self.start_point[1]
+        block_x, block_y = int(x//self.gap), int(y//self.gap)
+        return (block_x, block_y)
+        
 
     def check(self, unit: Unit):
         x, y = unit.coordinate[0] - self.start_point[0], unit.coordinate[1] - self.start_point[1]
         block_x, block_y = int(x//self.gap), int(y//self.gap)
-        print(block_x, block_y)
         return self.cross_points[min(max(0, block_y), self.block_y) * (self.block_x+1) + min(max(0, block_x), self.block_x)]
 
     def draw(self, screen):
@@ -322,10 +326,38 @@ class Trap(All):
 class Map:
     def __init__(self, grid: Grid, map_data: dict, in_color, out_color, block_gap, ratio, grid_show = False):
         self.grid = grid
+        self.map_data = map_data["map"]["map"]
+        
+        self.size = (map_data["map"]["size_x"], map_data["map"]["size_y"])
+        
         self.walls: list[Wall] = self.load_wall(map_data, in_color, out_color, block_gap, ratio)
         self.item: list[All] = self.load_item(map_data)
         
         self.grid_show = grid_show
+        
+    def is_wall(self, point: Point, direction):
+        block_x, block_y = self.grid.get_block_coordinate(point)
+        block_x += int(math.cos(direction * math.pi / 180) * 1.5)
+        block_y -= int(math.sin(direction * math.pi / 180) * 1.5)
+        
+        if not (0 <= block_x < self.size[0] and 0 <= block_y < self.size[1]):
+            return True
+        try:
+            value = self.map_data[block_y][block_x]
+        except IndexError:
+            value = 0
+
+            
+        if value != 0:
+            return True
+        else:
+            return False
+    
+    def check(self, unit: Unit):
+        return self.grid.check(unit)
+    
+    def update(self):
+        self.grid.update()
     
     def draw(self, screen):
         for wall in self.walls:
@@ -425,7 +457,7 @@ class Main:
         self.font = pygame.font.SysFont("Arial", 24)
         
         self.show_grid = show_grid
-        self.grid = Grid((self.screen_width/2, self.screen_height/2), 0, (24, 14))
+        self.grid = Grid((self.screen_width/2, self.screen_height/2), 0, (self.data["map"]["size_x"]-1, self.data["map"]["size_y"]-1))
         self.current_point = None
         
         self.map = Map(self.grid, self.data, (255, 0, 0), (0, 255, 0), Grid_data.BLOCK_GAP, RATIO, self.show_grid)
@@ -440,7 +472,7 @@ class Main:
                              Victim([0, 1, 1, 1, 1 ,1]), algorithm.Unit, PacMan_data.IMAGES,
                              PacMan_data.RATIO,
                              PacMan_data.RATE, name=PacMan_data.NAME, number= PacMan_data.NUMBER)
-        self.pacman.move_to(self.map.grid.cross_points[0][0], self.grid.cross_points[0][1])
+        self.pacman.move_to(self.map.grid.cross_points[10][0], self.map.grid.cross_points[10][1])
 
         # --------------------
         # Ghost init
@@ -448,7 +480,7 @@ class Main:
         self.blinky = Ghost((self.screen_width/3, self.screen_height/3, 0), 0, 5,
                             killer([1, 0, 0, 0, 0, 0]), algorithm.Blinky, Blinky_DATA.EYE_IMGAES,
                             Blinky_DATA.BODY_IMAGES, Blinky_DATA.RATIO, PacMan_data.RATE*2, name="Bilnky", number=2)
-        self.blinky.move_to(self.map.grid.cross_points[-1][0], self.grid.cross_points[-1][1])
+        self.blinky.move_to(self.map.grid.cross_points[-1][0], self.map.grid.cross_points[-1][1])
         
         
         
@@ -485,25 +517,11 @@ class Main:
 
                     if event.key in [pygame.K_RIGHT, pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN]:
                         self.last_move_command = event.key
-
-
-
-            screen.fill(Screen_data.COLOR)
-
-
+                        
 
             self.update()
-            self.move_unit()
+            self.turn_unit()
             self.draw(screen)
-            
-
-            self.current_point: Point = self.grid.check(self.pacman)
-            # pacman coordinate check code
-            self.current_point.radius = 10
-            self.current_point.draw(screen)
-
-            
-
 
             self.clock.tick(self.fps)
             if self.show_fps:
@@ -511,46 +529,46 @@ class Main:
                 screen.blit(fps_text, (10, 10))
             pygame.display.flip()
             
-    def move_unit(self):
-        if self.map.is_wall(self.current_point):
-            return
+    def turn_unit(self):
         
         if self.current_point.distance_x(self.pacman[0]) <= self.judgment_distance:
-                if self.last_move_command == pygame.K_DOWN:
-                    self.pacman.turn_to(270, PacMan_data.ABS_SPEED)
-                    self.pacman.move_to(self.current_point[0], self.pacman[1])
-                    self.blinky.turn_to(270, PacMan_data.ABS_SPEED)
-                elif self.last_move_command == pygame.K_UP:
-                    self.pacman.turn_to(90, PacMan_data.ABS_SPEED)
-                    self.pacman.move_to(self.current_point[0], self.pacman[1])
-                    self.blinky.turn_to(90, PacMan_data.ABS_SPEED)
+            if self.last_move_command == pygame.K_DOWN:
+                self.pacman.turn_to(270, PacMan_data.ABS_SPEED)
+                self.pacman.move_to(self.current_point[0], self.pacman[1])
+            elif self.last_move_command == pygame.K_UP:
+                self.pacman.turn_to(90, PacMan_data.ABS_SPEED)
+                self.pacman.move_to(self.current_point[0], self.pacman[1])
 
         if self.current_point.distance_y(self.pacman[1]) <= self.judgment_distance:
             if self.last_move_command == pygame.K_RIGHT:
                 self.pacman.turn_to(0, PacMan_data.ABS_SPEED)
                 self.pacman.move_to(self.pacman[0], self.current_point[1])
-                self.blinky.turn_to(0, PacMan_data.ABS_SPEED)
             elif self.last_move_command == pygame.K_LEFT:
                 self.pacman.turn_to(180, PacMan_data.ABS_SPEED)
                 self.pacman.move_to(self.pacman[0], self.current_point[1])
-                self.blinky.turn_to(180, PacMan_data.ABS_SPEED)
 
     def update(self):
-        self.grid.update()
+        self.map.update()
+        self.current_point: Point = self.map.check(self.pacman)
 
-
-        self.pacman.move(self.fps)
-        self.pacman.image.change()
+        if self.map.is_wall(self.current_point, self.pacman.direction) and self.current_point.distance(self.pacman[0], self.pacman[1]) <= self.judgment_distance:
+            self.pacman.move_to(self.current_point[0], self.current_point[1])
+        else:
+            self.pacman.move(self.fps)
+            self.pacman.image.change()
 
         self.blinky.image.change()
         
-        self.current_point: Point = self.grid.check(self.pacman)
     
     def draw(self, screen: pygame.surface.Surface):
         screen.fill(Screen_data.COLOR)
 
         # map base check
         self.map.draw(screen)
+        
+        if self.show_grid:
+            self.current_point.radius = 10
+            self.current_point.draw(screen)
 
         self.pacman.draw(screen)
         pygame.draw.circle(screen, (100, 100, 255), (self.pacman[0], self.pacman[1]), 8)
