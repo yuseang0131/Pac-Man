@@ -34,7 +34,6 @@ class Command_list:
         return False
 
 
-
 class Interacter(ABC):
     all_unit = UNIT_SET
 
@@ -107,7 +106,6 @@ class Image:
     def size(self, n):
         self.__ratio = n
 
-
     def change(self):
         self.change_late = (self.change_late + 1) % self.change_max_late
         if self.change_late == 0:
@@ -122,7 +120,7 @@ class Image:
         for i in range(self.length):
             self.images[i] = pygame.transform.scale(self.images_origin[i], (UNIT_SIZE * self.ratio, UNIT_SIZE * self.ratio))
 
-    def get_rect(self, x, y, z):
+    def get_rect(self, x, y, z=0):
         return self.images[0].get_rect(center= (x, y))
 
 class All(ABC):
@@ -160,32 +158,39 @@ class Unit(All):
         self.name = name
         self.number = number
 
-        self.alive = True
+        self.wait = False
+        self._alive = True
         self.life = -1
 
     @property
-    def is_alive(self):
-        return self.alive
-    @is_alive.setter
-    def is_alive(self, alive: bool):
-        if not alive:
+    def alive(self):
+        return self._alive
+    @alive.setter
+    def alive(self, alive: bool):
+        if not alive and self.life > 0: 
             self.life -= 1
-            self.alive = False
-
-    def revive(self, coordinate: np.array):
-        if not self.alive and self.life > 0:
-            self.algorithm.move_to(coordinate)
+            self._alive = True
+            
+    @property
+    def can_act(self):
+        return self.alive and not self.wait
+        
 
     def move(self, fps):
+        if not self.can_act:
+            return
         self.coordinate += self.speed/fps
 
     def move_to(self, x, y, z= 0):
         self.coordinate = np.array([x, y, z])
 
     def turn_to(self, angle, speed):
+        if not self.can_act:
+            return False
         self.direction = angle
         rad = angle * math.pi / 180
         self.speed = np.array([speed * math.cos(rad), -speed * math.sin(rad), 0])
+        return True
 
     def draw(self, screen: pygame.surface.Surface):
         screen.blit(self.image.current, self.image.get_rect(*self.coordinate))
@@ -223,9 +228,21 @@ class Point:
         self.radius = radius
         self.color = color
         
+        self._coordinate = (self.x, self.y)
+        
+    @property
+    def coordinate(self):
+        return self._coordinate
+        
+    @coordinate.setter
+    def coordinate(self, li):
+        self.x = li[0]
+        self.y = li[1]
+        self._coordinate = (self.x, self.y)
+        
     def __repr__(self):
         return f"({self.x}, {self.y}, {self.z})"
-
+    
     def __getitem__(self, index):
         if index == 0:
             return self.x
@@ -273,13 +290,16 @@ class Grid(All):
         self.row = []
         self.column = []
         self.points = []
+        
+        self.cross_points: list[Point] = []
+        self.center_points: list[Point] = []
         self.update()
 
     def update(self):
         self.row = []
         self.column = []
-        self.cross_points = []
-        self.center_points = []
+        self.cross_points: list[Point] = []
+        self.center_points: list[Point] = []
         for i in range(self.block_x + 1):
             x = self.start_point[0] + i * self.gap
             self.column.append(Line((x, self.start_point[1]), (x, self.end_point[1]), color= self.color))
@@ -323,8 +343,18 @@ class Grid(All):
         pygame.draw.circle(screen, (255, 100, 100), self.end_point, 5)
 
 class Wall(All):
-    def __init__(self, coordinate, direction, size, ratio):
+    def __init__(self, coordinate, direction, size, ratio, image: Image):
         super().__init__(coordinate, direction, ratio)
+        self.d_size = size
+        self.size = size * ratio
+        
+        self.image = Image(image, ratio)
+        self.image.turn_to(direction)
+    
+    def draw(self, screen: pygame.surface.Surface):
+        screen.blit(self.image.current, self.image.get_rect(*self.coordinate))
+
+
 
 class Trap(All):
     pass
@@ -394,11 +424,13 @@ class PacMan(Unit):
     def __init__(self, coordinate: np.array, direction: float, speed: np.array,
                  interact: Interacter, algorithm: algorithm.Unit,
                  images: list = [], ratio: float = 1, rate: int = 60, name: str = "", number: int = -1):
-        super().__init__(coordinate, direction, speed, interact, algorithm, images, ratio, rate, name=name, number=number)
+        super().__init__(coordinate, direction, speed, interact, algorithm, images[1:], ratio, rate, name=name, number=number)
+        self.wait_image = Image(images[0:1], ratio)
 
     def turn_to(self, angle, speed):
-        self.image.turn_to(angle - self.direction)
-        super().turn_to(angle, speed)
+        direction = self.direction
+        if super().turn_to(angle, speed):
+            self.image.turn_to(angle - direction)
 
 
 class Ghost(Unit):
@@ -412,30 +444,13 @@ class Ghost(Unit):
         self.images_eye = Image(images_eye, ratio, rate=0)
 
     def turn_to(self, angle, speed):
-        self.images_eye.current = int(angle//(math.pi/2))
-
-        super().turn_to(angle, speed)
+        if super().turn_to(angle, speed):
+            self.images_eye.current = int(angle//(math.pi/2))
 
 
     def draw(self, screen):
         super().draw(screen)
         screen.blit(self.images_eye.current, self.image.get_rect(*self.coordinate))
-
-# red
-class Blinky(Ghost):
-    pass
-
-# orange
-class Clyde(Ghost):
-    pass
-
-# cyan
-class Lnky(Ghost):
-    pass
-
-# pink
-class Pinky(Ghost):
-    pass
 
 class Unit_generator:
     pass
@@ -488,8 +503,9 @@ class Main:
                              Victim([0, 1, 1, 1, 1 ,1]), algorithm.Unit, PacMan_data.IMAGES,
                              PacMan_data.RATIO,
                              PacMan_data.RATE, name=PacMan_data.NAME, number= PacMan_data.NUMBER)
-        self.pacman.move_to(self.map.grid.cross_points[10][0], self.map.grid.cross_points[10][1])
+        self.pacman.move_to(*self.map.grid.cross_points[10].coordinate)
         self.pacman.current_point = self.map.grid.cross_points[10]
+        self.pacman.wait = False
 
         # --------------------
         # Ghost init
@@ -497,10 +513,12 @@ class Main:
         self.blinky = Ghost((self.screen_width/3, self.screen_height/3, 0), 0, 5,
                             killer([1, 0, 0, 0, 0, 0]), algorithm.Blinky, Blinky_DATA.EYE_IMGAES,
                             Blinky_DATA.BODY_IMAGES, Blinky_DATA.RATIO, PacMan_data.RATE*2, name="Bilnky", number=2)
-        self.blinky.move_to(self.map.grid.cross_points[-1][0], self.map.grid.cross_points[-1][1])
+        self.blinky.move_to(*self.map.grid.cross_points[-1].coordinate)
         self.blinky.current_point = self.map.grid.cross_points[-1]
         
         self.units: list[Unit] = [self.pacman, self.blinky]
+        
+        self.wall = Wall(self.map.grid.center_points[0].coordinate, 0, 8, RATIO, Wall_data.IMAGES[0:1])
         
 
         # --------------------
@@ -533,11 +551,14 @@ class Main:
 
                     if event.key in [pygame.K_RIGHT, pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN]:
                         self.last_move_command = event.key
-                        
+            
+        
 
             self.update()
             self.turn_unit()
             self.draw(screen)
+            
+            self.wall.draw(screen)
 
             self.clock.tick(self.fps)
             if self.show_fps:

@@ -5,7 +5,7 @@ import numpy as np
 pygame.init()
 
 
-RATIO = 4
+RATIO = 7
 UNIT_SIZE = 14
 IMG_PATH = "data/imgs"
 JUDGMENT_DISTANCE = 5
@@ -25,6 +25,11 @@ class Screen_data:
 class Grid_data:
     BLOCK_GAP = 8
 
+class Wall_data:
+    COLOR = (33, 33, 222)
+    IMAGES = [
+        pygame.image.load(f"{IMG_PATH}/Wall/0.png")
+    ]
 
 # ----------------------
 # Pac-Man
@@ -34,6 +39,7 @@ class PacMan_data:
     NAME = "PacMan"
 
     IMAGES = [
+        pygame.image.load(f"{IMG_PATH}/Pac-Man/0.png"),
         pygame.image.load(f"{IMG_PATH}/Pac-Man/1.png"),
         pygame.image.load(f"{IMG_PATH}/Pac-Man/2.png")
     ]

@@ -1,3 +1,3 @@
-a = {"a": 12}
+import math
 
-print(a.keys() == "a")
+print(int(math.cos(math.pi)))
