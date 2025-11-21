@@ -5,10 +5,9 @@ import numpy as np
 pygame.init()
 
 
-RATIO = 7
-UNIT_SIZE = 14
+RATIO = 6
 IMG_PATH = "data/imgs"
-JUDGMENT_DISTANCE = 5
+JUDGMENT_DISTANCE = RATIO
 UNIT_SET = ["PacMan", "LadyPacMan", "Blinky", "Clyde", "Lnky", "Pinky"]
 
 # ----------------------
@@ -37,20 +36,17 @@ class Wall_data:
 class PacMan_data:
     NUMBER = 0
     NAME = "PacMan"
+    SIZE = 13
 
     IMAGES = [
         pygame.image.load(f"{IMG_PATH}/Pac-Man/0.png"),
         pygame.image.load(f"{IMG_PATH}/Pac-Man/1.png"),
         pygame.image.load(f"{IMG_PATH}/Pac-Man/2.png")
     ]
-    ABS_SPEED = float(UNIT_SIZE * RATIO * 5)
+    ABS_SPEED = float(Grid_data.BLOCK_GAP * RATIO * 4)
     SPEED = np.array([ABS_SPEED, 0.0, 0.0])
     COORDINATE = np.array([Screen_data.WIDTH/2, Screen_data.HEIGHT/2, 0])
     DIRECTION = 0
-    RATIO = RATIO
-    SIZE_X = UNIT_SIZE
-    SIZE_Y = UNIT_SIZE
-
     RATE = 5
 
 
@@ -60,6 +56,8 @@ class Ghost_data:
     CLYDE_COLOR = (222, 184, 70)
     LNKY_COLOR = (57, 222, 203)
     PINKY_COLOR = (255, 174, 201)
+    
+    SIZE = 14
 
     EYE_IMAGES_ORDER = ["right.png", "up.png", "left.png", "down.png"]
     BODY_IMAGES_ORDER = ["1.png", "2.png"]
@@ -67,7 +65,6 @@ class Ghost_data:
 
     def __init__(self, color):
         self.COLOR = color
-        self.RATIO = RATIO
         self.EYE_IMGAES = []
         self.BODY_IMAGES = []
 
