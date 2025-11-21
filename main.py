@@ -76,7 +76,7 @@ class Getter(Interacter):
     pass
 
 class Image:
-    def __init__(self, images: list, ratio: float, rate: int = 60):
+    def __init__(self, images: list, ratio: list, rate: int = 60):
         self.images_origin = images
         self.images = images
 
@@ -126,13 +126,10 @@ class Image:
         return self.images[0].get_rect(center= (x, y))
 
 class All(ABC):
-    def __init__(self, coordinate: np.array, direction: float, size, ratio):
+    def __init__(self, coordinate: np.array, direction: float, ratio):
         self.coordinate = coordinate
         self.direction = direction
-        
-        self.d_size = size
         self.ratio = ratio
-        self.size = size * ratio
 
     def __getitem__(self, index):
         if index == 0:
@@ -149,9 +146,9 @@ class All(ABC):
 class Unit(All):
     def __init__(self, coordinate: np.array, direction: float, speed: np.array,
                  interact: Interacter, algorithm = algorithm.Unit,
-                 images: list = [], size = 0, ratio: float = 1, rate: int = 60, name: str = "", number: int = -1
+                 images: list = [], ratio: float = 1, rate: int = 60, name: str = "", number: int = -1
                  ):
-        All.__init__(self, coordinate, direction, size, ratio)
+        All.__init__(self, coordinate, direction, ratio)
         
         self.speed = speed
         self.image = Image(images, ratio, rate= rate)
@@ -195,9 +192,9 @@ class Unit(All):
 
 
 class Item(All):
-    def __init__(self, coordinate: np.array, direction: float, size, ratio, interacter: Interacter,
+    def __init__(self, coordinate: np.array, direction: float, ratio, interacter: Interacter,
                  images: list = []):
-        All.__init__(coordinate, direction, size, ratio)
+        All.__init__(coordinate, direction, ratio)
         self.interacter = interacter
         self.image = Image(images, ratio)
 
@@ -256,19 +253,19 @@ class Point:
         pygame.draw.circle(screen, self.color, (self.x, self.y), self.radius)
 
 class Grid(All):
-    def __init__(self, coordinate: np.array, direction: float, size: tuple[list],
-                 gap: float = RATIO * Grid_data.BLOCK_GAP):
-        super().__init__(coordinate, direction)
-        self.gap = gap
-        self.map_x = size[0] * gap
-        self.map_y = size[1] * gap
+    def __init__(self, coordinate: np.array, direction: float, size: tuple[list], ratio = RATIO,
+                 gap: float = Grid_data.BLOCK_GAP):
+        super().__init__(coordinate, direction, ratio)
+        self.gap = gap * ratio
+        self.map_x = size[0] * self.gap
+        self.map_y = size[1] * self.gap
         self.block_x = size[0]
         self.block_y = size[1]
 
         self.color = (255, 255, 255)
 
-        dx = self.block_x/2 * gap
-        dy = self.block_y/2 * gap
+        dx = self.block_x/2 * self.gap
+        dy = self.block_y/2 * self.gap
 
         self.start_point = (coordinate[0] - dx, coordinate[1] - dy)
         self.end_point = (coordinate[0] + dx, coordinate[1] + dy)
@@ -327,7 +324,7 @@ class Grid(All):
 
 class Wall(All):
     def __init__(self, coordinate, direction, size, ratio):
-        super().__init__(coordinate, direction, size, ratio)
+        super().__init__(coordinate, direction, ratio)
 
 class Trap(All):
     pass
