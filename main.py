@@ -514,7 +514,6 @@ class Main:
         self.units: list[Unit] = [self.pacman, self.blinky]
         
         self.wall = Wall(self.map.grid.center_points[0].coordinate, 0, 8, RATIO, Wall_data.IMAGES[0:1])
-        self.test_rect: pygame.Rect = self.wall.image.get_rect(*self.map.grid.center_points[0].coordinate)
         
 
         # --------------------
@@ -554,7 +553,7 @@ class Main:
             self.turn_unit()
             self.draw(screen)
             
-            pygame.draw.rect(screen, (100, 255, 100), self.test_rect)
+            
             self.wall.draw(screen)
             
             

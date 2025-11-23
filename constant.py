@@ -26,9 +26,20 @@ class Grid_data:
 
 class Wall_data:
     COLOR = (33, 33, 222)
-    IMAGES = [
-        pygame.image.load(f"{IMG_PATH}/Wall/0.png")
-    ]
+    IMAGES = {
+        pygame.image.load(f"{IMG_PATH}/Wall/end00.png"),
+        pygame.image.load(f"{IMG_PATH}/Wall/end01.png"),
+        pygame.image.load(f"{IMG_PATH}/Wall/end10.png"),
+        pygame.image.load(f"{IMG_PATH}/Wall/end11.png"),
+        
+        pygame.image.load(f"{IMG_PATH}/Wall/line00.png"),
+        pygame.image.load(f"{IMG_PATH}/Wall/line01.png"),
+        pygame.image.load(f"{IMG_PATH}/Wall/line10.png"),
+        pygame.image.load(f"{IMG_PATH}/Wall/line_half.png"),
+        
+        pygame.image.load(f"{IMG_PATH}/Wall/t_line01.png")
+        
+    }
 
 # ----------------------
 # Pac-Man
