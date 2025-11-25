@@ -141,9 +141,11 @@ def rotate_image_3d_perspective(
 def rotate_image(img, theta: float, cam_dist, f, screen_center,
          axis_point: np.array, axis_dir: np.array = np.array([0.0, 1.0, 0.0], dtype=np.float32)):
 
+    '''
     cam_dist = 900.0
     f = 700.0
     screen_center = (400, 300)
+    '''
 
     rotated_surf, pos = rotate_image_3d_perspective(
         img, theta,

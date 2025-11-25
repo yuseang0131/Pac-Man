@@ -20,6 +20,10 @@ class Screen_data:
 
     COLOR = (0, 0, 0)
 
+class Image_data:
+    CAM_DIST = 900.0
+    F = 700.0
+    SCRENN_CENTER = (Screen_data.WIDTH/2, Screen_data.HEIGHT/2)
 
 class Grid_data:
     BLOCK_GAP = 8
@@ -27,17 +31,25 @@ class Grid_data:
 class Wall_data:
     COLOR = (33, 33, 222)
     IMAGES = {
-        pygame.image.load(f"{IMG_PATH}/Wall/end00.png"),
-        pygame.image.load(f"{IMG_PATH}/Wall/end01.png"),
-        pygame.image.load(f"{IMG_PATH}/Wall/end10.png"),
-        pygame.image.load(f"{IMG_PATH}/Wall/end11.png"),
+        "end00": pygame.image.load(f"{IMG_PATH}/Wall/end00.png"),
+        "end01": pygame.image.load(f"{IMG_PATH}/Wall/end01.png"),
+        "end10": pygame.image.load(f"{IMG_PATH}/Wall/end10.png"),
+        "end11": pygame.image.load(f"{IMG_PATH}/Wall/end11.png"),
         
-        pygame.image.load(f"{IMG_PATH}/Wall/line00.png"),
-        pygame.image.load(f"{IMG_PATH}/Wall/line01.png"),
-        pygame.image.load(f"{IMG_PATH}/Wall/line10.png"),
-        pygame.image.load(f"{IMG_PATH}/Wall/line_half.png"),
+        "l00": pygame.image.load(f"{IMG_PATH}/Wall/line00.png"),
+        "l01": pygame.image.load(f"{IMG_PATH}/Wall/line01.png"),
+        "l10": pygame.image.load(f"{IMG_PATH}/Wall/line10.png"),
+        "l11": pygame.image.load(f"{IMG_PATH}/Wall/line11.png"),
         
-        pygame.image.load(f"{IMG_PATH}/Wall/t_line01.png")
+        "turn": pygame.image.load(f"{IMG_PATH}/Wall/turn.png"),
+        
+        10: pygame.image.load(f"{IMG_PATH}/Wall/t_line01.png"),
+        11: pygame.image.load(f"{IMG_PATH}/Wall/t_line10.png"),
+        12: pygame.image.load(f"{IMG_PATH}/Wall/t_line00.png"),
+        17: pygame.image.load(f"{IMG_PATH}/Wall/t_line11.png"),
+        
+        13: pygame.image.load(f"{IMG_PATH}/Wall/t_turn_1.png"),
+        14: pygame.image.load(f"{IMG_PATH}/Wall/t_turn_2.png"),
         
     }
 

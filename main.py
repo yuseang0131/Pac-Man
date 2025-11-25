@@ -10,6 +10,7 @@ import algorithm
 from abc import ABC, abstractmethod
 from threading import Thread
 from collections import deque
+from rotate_image import rotate_image
 
 from typing import Iterable
 
@@ -34,8 +35,9 @@ class Command_list:
         return False
 
 
-class Interacter(ABC):
-    def __init__(self, target: list[bool]):
+class Interacter(ABC, pygame.sprite.Sprite):
+    def __init__(self, target: list[bool], *groups):
+        pygame.sprite.Sprite.__init__(self, *groups)
         self.target = target
 
     @property
@@ -50,30 +52,37 @@ class Interacter(ABC):
         pass
 
 class killer(Interacter):
-    def __init__(self, target):
-        super().__init__(target)
+    def __init__(self, target, *groups):
+        super().__init__(target, *groups)
 
     def active(self, unit: Unit, interacter: Interacter):
         if interacter is Victim:
             unit.is_alive = False
 
 class Victim(Interacter):
-    def __init__(self, target):
-        super().__init__(target)
+    def __init__(self, target, *groups):
+        super().__init__(target, *groups)
+
 
     def active(self, unit: Unit, interacter: Interacter):
         if interacter is killer:
             unit.is_alive = False
 
 class Giver(Interacter):
-    def __init__(self, target):
-        super().__init__(target)
+    def __init__(self, target, *groups):
+        super().__init__(target, *groups)
 
 class Getter(Interacter):
-    pass
+    def __init__(self, target, *groups):
+        super().__init__(target, *groups)
+
 
 class Image:
-    def __init__(self, images: list[pygame.Surface], ratio: list, rate: int = 60):
+    CAM_DIST = Image_data.CAM_DIST
+    F = Image_data.F
+    SCREEN_CENTER = Image_data.SCRENN_CENTER
+        
+    def __init__(self, images: list[pygame.Surface], ratio: list, rate: int = 60, theta = 0):
         self.images_origin = images
         self.images = images
 
@@ -88,6 +97,8 @@ class Image:
 
         self.ratio_update()
         self.__current = images[0]
+        
+        self.theta = theta
 
     @property
     def current(self):
@@ -118,7 +129,18 @@ class Image:
 
     def get_rect(self, x, y, z=0):
         return self.images[0].get_rect(center= (x, y))
+    
+    def rotate(self):
+        rotated_surf, pos = rotate_image(
+            self.current,
+            self.theta,
+            cam_dist=self.CAM_DIST,
+            f= self.F,
+            screen_center=self.SCREEN_CENTER
+        )
+        return rotated_surf, pos
 
+    
 class All(ABC):
     def __init__(self, coordinate: np.array, direction: float, ratio):
         self.coordinate = coordinate
@@ -136,7 +158,6 @@ class All(ABC):
         pass
 
 
-# main three class
 class Unit(All):
     def __init__(self, coordinate: np.array, direction: float, speed: np.array,
                  interact: Interacter, algorithm = algorithm.Unit,
@@ -349,20 +370,14 @@ class Wall(All):
     def draw(self, screen: pygame.surface.Surface):
         screen.blit(self.image.current, self.image.get_rect(*self.coordinate))
 
-
-
-class Trap(All):
-    pass
-
-
 class Map:
-    def __init__(self, grid: Grid, map_data: dict, in_color, out_color, block_gap, ratio, grid_show = False):
+    def __init__(self, grid: Grid, map_data: dict, color, block_gap, ratio, grid_show = False):
         self.grid = grid
         self.map_data = map_data["map"]["map"]
         
         self.size = (map_data["map"]["size_x"], map_data["map"]["size_y"])
         
-        self.walls: list[Wall] = self.load_wall(map_data, in_color, out_color, block_gap, ratio)
+        self.walls, self.img = self.load_wall(map_data, color, block_gap, ratio)
         self.item: list[All] = self.load_item(map_data)
         
         self.grid_show = grid_show
@@ -372,7 +387,7 @@ class Map:
         block_x += int(math.cos(direction * math.pi / 180) * 1.5)
         block_y -= int(math.sin(direction * math.pi / 180) * 1.5)
         
-        if not (0 <= block_x < self.size[0] and 0 <= block_y < self.size[1]):
+        if not (0 <= block_x <= self.size[0] and 0 <= block_y <= self.size[1]):
             return True
         try:
             value = self.map_data[block_y][block_x]
@@ -391,19 +406,21 @@ class Map:
     def update(self):
         self.grid.update()
     
-    def draw(self, screen):
+    def draw(self, screen: pygame.surface.Surface):
+        if self.grid_show:
+            self.grid.draw(screen)
+            
         for wall in self.walls:
             wall.draw(screen)
             
-        if self.grid_show:
-            self.grid.draw(screen)
-        
-            
-    def load_wall(self, data, in_color, out_color, block_gap, ratio):
+    def load_wall(self, data, color, block_gap, ratio):
+        data = data["map"]["map"]
         walls = []
+        for coordinate, theta, img in algorithm.wall_make(data, color):
+            point = self.grid.center_points[coordinate[0] * (self.size[0]) + coordinate[1]].coordinate
+            walls.append(Wall(point, theta, block_gap, ratio, [img]))
         
-        
-        return walls
+        return walls, img
 
     @staticmethod
     def load_item(data):
@@ -483,10 +500,10 @@ class Main:
         self.font = pygame.font.SysFont("Arial", 24)
         
         self.show_grid = show_grid
-        self.grid = Grid((self.screen_width/2, self.screen_height/2), 0, (self.data["map"]["size_x"]-1, self.data["map"]["size_y"]-1), RATIO, Grid_data.BLOCK_GAP)
+        self.grid = Grid((self.screen_width/2, self.screen_height/2), 0, (self.data["map"]["size_x"], self.data["map"]["size_y"]), RATIO, Grid_data.BLOCK_GAP)
         self.current_point = None
         
-        self.map = Map(self.grid, self.data, (255, 0, 0), (0, 255, 0), Grid_data.BLOCK_GAP, RATIO, self.show_grid)
+        self.map = Map(self.grid, self.data, Wall_data.COLOR, Grid_data.BLOCK_GAP, RATIO, self.show_grid)
         
         
         
@@ -513,7 +530,6 @@ class Main:
         
         self.units: list[Unit] = [self.pacman, self.blinky]
         
-        self.wall = Wall(self.map.grid.center_points[0].coordinate, 0, 8, RATIO, Wall_data.IMAGES[0:1])
         
 
         # --------------------
@@ -551,11 +567,7 @@ class Main:
 
             self.update()
             self.turn_unit()
-            self.draw(screen)
-            
-            
-            self.wall.draw(screen)
-            
+            self.draw(screen)            
             
             
             self.clock.tick(self.fps)
