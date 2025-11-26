@@ -341,7 +341,7 @@ class Grid(All):
         return (block_x, block_y)
         
 
-    def check(self, unit: Unit):
+    def cross_check(self, unit: Unit):
         x, y = unit.coordinate[0] - self.start_point[0], unit.coordinate[1] - self.start_point[1]
         block_x, block_y = round(x/self.gap), round(y/self.gap)
         return self.cross_points[min(max(0, block_y), self.block_y) * (self.block_x+1) + min(max(0, block_x), self.block_x)]
@@ -377,20 +377,25 @@ class Map:
         
         self.size = (map_data["map"]["size_x"], map_data["map"]["size_y"])
         
-        self.walls, self.img = self.load_wall(map_data, color, block_gap, ratio)
+        self.walls = self.load_wall(map_data, color, block_gap, ratio)
         self.item: list[All] = self.load_item(map_data)
+        
+        self.collision_data = self.load_collision_data(map_data, self.size)
         
         self.grid_show = grid_show
         
     def is_wall(self, point: Point, direction):
         block_x, block_y = self.grid.get_block_coordinate(point)
-        block_x += int(math.cos(direction * math.pi / 180) * 1.5)
-        block_y -= int(math.sin(direction * math.pi / 180) * 1.5)
+        dx = int(math.cos(direction * math.pi / 180) * 1.3)
+        dy = -int(math.sin(direction * math.pi / 180) * 1.3)
+        
+        block_x += dx
+        block_y += dy
         
         if not (0 <= block_x <= self.size[0] and 0 <= block_y <= self.size[1]):
             return True
         try:
-            value = self.map_data[block_y][block_x]
+            value = self.collision_data[block_y][block_x]
         except IndexError:
             value = 0
 
@@ -400,8 +405,8 @@ class Map:
         else:
             return False
     
-    def check(self, unit: Unit):
-        return self.grid.check(unit)
+    def cross_check(self, unit: Unit):
+        return self.grid.cross_check(unit)
     
     def update(self):
         self.grid.update()
@@ -420,7 +425,7 @@ class Map:
             point = self.grid.center_points[coordinate[0] * (self.size[0]) + coordinate[1]].coordinate
             walls.append(Wall(point, theta, block_gap, ratio, [img]))
         
-        return walls, img
+        return walls
 
     @staticmethod
     def load_item(data):
@@ -428,8 +433,25 @@ class Map:
         object_list = []
         
         return object_list
+    
+    @staticmethod
+    def load_collision_data(data, size):
+        data = data["map"]["map"]
         
-
+        collision_data = [[0] * (size[0] + 1) for _ in range(size[1] + 1)]
+        
+        for i in range(size[1]):
+            for j in range(size[0]):
+                if data[i][j] == 0:
+                    continue
+                collision_data[i][j] = 1
+                collision_data[i+1][j] = 1
+                collision_data[i][j+1] = 1
+                collision_data[i+1][j+1] = 1
+        
+        
+        
+        return collision_data
 
 
 class PacMan(Unit):
@@ -595,7 +617,7 @@ class Main:
 
     def update(self):
         self.map.update()
-        self.pacman.current_point = self.map.check(self.pacman)
+        self.pacman.current_point = self.map.cross_check(self.pacman)
         
         for unit in self.units:
             if self.map.is_wall(unit.current_point, unit.direction) and unit.current_point.distance(unit[0], unit[1]) <= self.judgment_distance:
@@ -625,5 +647,5 @@ class Main:
 if __name__=="__main__":
     pygame.init()
     screen = pygame.display.set_mode((Screen_data.WIDTH, Screen_data.HEIGHT))
-    MainScreen = Main(Screen_data.WIDTH, Screen_data.HEIGHT, 60, show_fps=True, show_grid=True)
+    MainScreen = Main(Screen_data.WIDTH, Screen_data.HEIGHT, 60, show_fps=True, show_grid=False)
     MainScreen.loop(screen)

@@ -51,13 +51,13 @@ def wall_make(map_data: list[list[int]], color=Wall_data.COLOR, wall_data=Wall_d
                 
                 v = [1, 2]
                 N  = same(i, j, -1,  0, v)
-                NE = same(i, j, -1,  -1, v)
-                E  = same(i, j,  0,  -1, v)
-                SE = same(i, j,  1,  -1, v)
+                NE = same(i, j, -1,  1, v)
+                E  = same(i, j,  0,  1, v)
+                SE = same(i, j,  1,  1, v)
                 S  = same(i, j,  1,  0, v)
-                SW = same(i, j,  1, 1, v)
-                W = same(i, j,  0, 1, v)
-                NW = same(i, j, -1, 1, v)
+                SW = same(i, j,  1, -1, v)
+                W = same(i, j,  0, -1, v)
+                NW = same(i, j, -1, -1, v)
                 
                 card = {"N": N, "E": E, "S": S, "W": W}
                 diag = {"NE": NE, "SE": SE, "SW": SW, "NW": NW}
@@ -79,13 +79,13 @@ def wall_make(map_data: list[list[int]], color=Wall_data.COLOR, wall_data=Wall_d
                     
                     elif E:
                         if NE and SE:
-                            add_img(data, "end11", 270, (i, j))
+                            add_img(data, "end11", 90, (i, j))
                         elif not NE and SE:
-                            add_img(data, "end10", 270, (i, j))
+                            add_img(data, "end10", 90, (i, j))
                         elif NE and not SE:
-                            add_img(data, "end01", 270, (i, j))
+                            add_img(data, "end01", 90, (i, j))
                         elif not NE and not SE:
-                            add_img(data, "end00", 270, (i, j))
+                            add_img(data, "end00", 90, (i, j))
 
                     elif S:
                         if SE and SW:
@@ -99,44 +99,44 @@ def wall_make(map_data: list[list[int]], color=Wall_data.COLOR, wall_data=Wall_d
                             
                     elif W:
                         if NW and SW:
-                            add_img(data, "end11", 90, (i, j))
+                            add_img(data, "end11", 270, (i, j))
                         elif not NW and SW:
-                            add_img(data, "end01", 90, (i, j))
+                            add_img(data, "end01", 270, (i, j))
                         elif NW and not SW:
-                            add_img(data, "end10", 90, (i, j))
+                            add_img(data, "end10", 270, (i, j))
                         elif not NW and not SW:
-                            add_img(data, "end00", 90, (i, j))
+                            add_img(data, "end00", 270, (i, j))
                     
                 elif card_count == 2:
                     if N and E:
                         add_img(data, "turn", 0, (i, j))
                     elif E and S:
-                        add_img(data, "turn", 90, (i, j))
+                        add_img(data, "turn", 270, (i, j))
                     elif S and W:
                         add_img(data, "turn", 180, (i, j))
                     elif W and N:
-                        add_img(data, "turn", 270, (i, j))
+                        add_img(data, "turn", 90, (i, j))
                     else:
                         if N and S:
                             # right
                             if not NE and not SE:
-                                add_img(data, "l00", 270, (i, j))
+                                add_img(data, "l00", 90, (i, j))
                             elif not NE and SE:
-                                add_img(data, "l10", 270, (i, j))
+                                add_img(data, "l10", 90, (i, j))
                             elif NE and not SE:
-                                add_img(data, "l01", 270, (i, j))
+                                add_img(data, "l01", 90, (i, j))
                             elif NE and SE:
-                                add_img(data, "l11", 270, (i, j))
+                                add_img(data, "l11", 90, (i, j))
 
                             #left
                             if not NW and not SW:
-                                add_img(data, "l00", 90, (i, j))
+                                add_img(data, "l00", 270, (i, j))
                             elif not NW and SW:
-                                add_img(data, "l01", 90, (i, j))
+                                add_img(data, "l01", 270, (i, j))
                             elif NW and not SW:
-                                add_img(data, "l10", 90, (i, j))
+                                add_img(data, "l10", 270, (i, j))
                             elif NW and SW:
-                                add_img(data, "l11", 90, (i, j))
+                                add_img(data, "l11", 270, (i, j))
                                 
                         elif E and W:
                             #up
@@ -160,14 +160,23 @@ def wall_make(map_data: list[list[int]], color=Wall_data.COLOR, wall_data=Wall_d
                                 add_img(data, "111", 0, (i, j))
                 
                 elif card_count == 3:
+                    a, b = 0, 0
                     if not N:
-                        add_img(data, "l00", 180, (i, j))
-                    if not E:
-                        add_img(data, "l00", 270, (i, j))
-                    if not S:
-                        add_img(data, "l00", 0, (i, j))
-                    if not W:
-                        add_img(data, "l00", 90, (i, j))
+                        if NE: a = 1
+                        if NW: b = 1
+                        add_img(data, f"l{a}{b}", 180, (i, j))
+                    elif not E:
+                        if NE: a = 1
+                        if SE: b = 1
+                        add_img(data, f"l{b}{a}", 90, (i, j))
+                    elif not S:
+                        if SE: a = 1
+                        if SW: b = 1
+                        add_img(data, f"l{b}{a}", 0, (i, j))
+                    elif not W:
+                        if NW: a = 1
+                        if SW: b = 1
+                        add_img(data, f"l{a}{b}", 270, (i, j))
                 
             elif map_data[i][j] == 2:
                 
