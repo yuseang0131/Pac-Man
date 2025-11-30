@@ -237,10 +237,13 @@ class Item(All):
         All.__init__(coordinate, direction, ratio)
         self.interacter = interacter
         self.image = Image(images, ratio)
-
+        self.image_set = [self.image]
 
     def draw(self):
         pass
+
+class dots(Item):
+    pass
 
 # --------------------------------
 class Line:
@@ -548,7 +551,7 @@ class Main:
         
         
         self.rotate_state = False
-        self.rotate_time = 90
+        self.rotate_time = 0
         
 
         # --------------------
@@ -617,8 +620,9 @@ class Main:
                     
                     if event.key == pygame.K_F5:
                         self.reset()
-                        self.rotate_state = True
-                        self.rotate_time = 90
+                        if not self.rotate_time:
+                            self.rotate_state = True
+                            self.rotate_time = 90
 
                     if event.key in [pygame.K_RIGHT, pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN]:
                         self.last_move_command = event.key
