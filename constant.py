@@ -5,16 +5,21 @@ import numpy as np
 pygame.init()
 
 
-RATIO = 5
+RATIO = 6
 IMG_PATH = "data/imgs"
 JUDGMENT_DISTANCE = RATIO
 UNIT_SET = ["PacMan", "LadyPacMan", "Blinky", "Clyde", "Lnky", "Pinky"]
 
-Z = -200
+INTERECTER_LEN = 6 * RATIO
+
+Z = -380
 
 # ----------------------
 # Screen
 # ----------------------
+
+
+
 class Screen_data:
     INFO = pygame.display.Info()
     WIDTH, HEIGHT = INFO.current_w, INFO.current_h
@@ -26,6 +31,23 @@ class Image_data:
     CAM_DIST = 900.0
     F = 700.0
     SCRENN_CENTER = (Screen_data.WIDTH/2, Screen_data.HEIGHT/2)
+    
+    
+class Item_data:
+    DOT_IMAGE = pygame.image.load(f"{IMG_PATH}/Item/dot.png")
+    DOT_INTERECT_LEN = RATIO
+    get_DOT_INTERECT_RECT = lambda x,y: pygame.Rect(x, y, RATIO, RATIO)
+    
+    
+    
+    POWER_IMAGE = pygame.image.load(f"{IMG_PATH}/Item/power.png")
+    POWER_INTERECT_LEN = 2 * RATIO
+    get_POWER_INTERECT_RECT = lambda x,y: pygame.Rect(x, y, 2*RATIO, 2*RATIO)
+    
+    @staticmethod
+    @property
+    def INTERECT_RECT(x, y):
+        return pygame.Rect(x, y, RATIO)
 
 class Grid_data:
     BLOCK_GAP = 8
@@ -73,6 +95,9 @@ class PacMan_data:
     COORDINATE = np.array([Screen_data.WIDTH/2, Screen_data.HEIGHT/2, Z])
     DIRECTION = 0
     RATE = 5
+    
+    INTERECTER_RECT = pygame.Rect(0, 0, INTERECTER_LEN, INTERECTER_LEN)
+    INTERECTER_RECT.center = (COORDINATE[0], COORDINATE[1])
 
 
 
@@ -89,13 +114,21 @@ class Ghost_data:
 
     EYE_IMAGES_ORDER = ["right.png", "up.png", "left.png", "down.png"]
     BODY_IMAGES_ORDER = ["1.png", "2.png"]
+    SCARED_IMAGES = [
+        pygame.image.load(f"{IMG_PATH}/Ghost/3.png"),
+        pygame.image.load(f"{IMG_PATH}/Ghost/4.png")
+        ]
 
     COORDINATE = np.array([0, 0, Z])
+
 
     def __init__(self, color):
         self.COLOR = color
         self.EYE_IMGAES = []
         self.BODY_IMAGES = []
+        
+        self.INTERECTER_RECT = pygame.Rect(0, 0, INTERECTER_LEN, INTERECTER_LEN)
+        self.INTERECTER_RECT.center = (self.COORDINATE[0], self.COORDINATE[1])
 
         for i in Ghost_data.BODY_IMAGES_ORDER:
             image = pygame.image.load(f"{IMG_PATH}/Ghost/{i}")

@@ -12,9 +12,6 @@ def add_img(li, n, theta, coordinate, color=Wall_data.COLOR, wall_data=Wall_data
     img = pygame.transform.rotate(img, theta)
     img.fill(color, special_flags=pygame.BLEND_RGBA_MULT)
     li.append((coordinate, theta, img))
-    
-
-
 
 
 def wall_make(map_data: list[list[int]], color=Wall_data.COLOR, wall_data=Wall_data.IMAGES):
@@ -27,7 +24,7 @@ def wall_make(map_data: list[list[int]], color=Wall_data.COLOR, wall_data=Wall_d
         for j in range(x_len):
             if map_data[i][j] == 1:
                 
-                v = [1, 2]
+                v = [1]
                 N  = same(i, j, -1,  0, v)
                 NE = same(i, j, -1,  1, v)
                 E  = same(i, j,  0,  1, v)
@@ -119,23 +116,23 @@ def wall_make(map_data: list[list[int]], color=Wall_data.COLOR, wall_data=Wall_d
                         elif E and W:
                             #up
                             if not NE and not NW:
-                                add_img(data, "100", 180, (i, j))
+                                add_img(data, "l00", 180, (i, j))
                             elif NE and not NW:
-                                add_img(data, "110", 180, (i, j))
+                                add_img(data, "l10", 180, (i, j))
                             elif not NE and NW:
-                                add_img(data, "101", 180, (i, j))
+                                add_img(data, "l01", 180, (i, j))
                             elif NE and NW:
-                                add_img(data, "111", 180, (i, j))
+                                add_img(data, "l11", 180, (i, j))
 
                             #down
                             if not SE and not SW:
-                                add_img(data, "100", 0, (i, j))
+                                add_img(data, "l00", 0, (i, j))
                             elif SE and not SW:
                                 add_img(data, "l01", 0, (i, j))
                             elif not SE and SW:
-                                add_img(data, "110", 0, (i, j))
+                                add_img(data, "l10", 0, (i, j))
                             elif SE and SW:
-                                add_img(data, "111", 0, (i, j))
+                                add_img(data, "l11", 0, (i, j))
                 
                 elif card_count == 3:
                     a, b = 0, 0
@@ -156,9 +153,9 @@ def wall_make(map_data: list[list[int]], color=Wall_data.COLOR, wall_data=Wall_d
                         if SW: b = 1
                         add_img(data, f"l{a}{b}", 270, (i, j))
                 
-            elif map_data[i][j] == 2:
+            '''elif map_data[i][j] == 2:
                 
-                v = [2]
+                v = [2, 3, 4, 5]
                 N  = same(i, j, -1,  0, v)
                 NE = same(i, j, -1,  1, v)
                 E  = same(i, j,  0,  1, v)
@@ -173,7 +170,7 @@ def wall_make(map_data: list[list[int]], color=Wall_data.COLOR, wall_data=Wall_d
 
                 card_count = sum(card.values())
                 diag_count = sum(diag.values())
-                
+                '''
     
     return data
                 
