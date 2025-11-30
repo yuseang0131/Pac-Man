@@ -5,10 +5,12 @@ import numpy as np
 pygame.init()
 
 
-RATIO = 6
+RATIO = 5
 IMG_PATH = "data/imgs"
 JUDGMENT_DISTANCE = RATIO
 UNIT_SET = ["PacMan", "LadyPacMan", "Blinky", "Clyde", "Lnky", "Pinky"]
+
+Z = -200
 
 # ----------------------
 # Screen
@@ -68,7 +70,7 @@ class PacMan_data:
     ]
     ABS_SPEED = float(Grid_data.BLOCK_GAP * RATIO * 4)
     SPEED = np.array([ABS_SPEED, 0.0, 0.0])
-    COORDINATE = np.array([Screen_data.WIDTH/2, Screen_data.HEIGHT/2, 0])
+    COORDINATE = np.array([Screen_data.WIDTH/2, Screen_data.HEIGHT/2, Z])
     DIRECTION = 0
     RATE = 5
 
@@ -80,11 +82,15 @@ class Ghost_data:
     LNKY_COLOR = (57, 222, 203)
     PINKY_COLOR = (255, 174, 201)
     
+    ABS_SPEED = float(Grid_data.BLOCK_GAP * RATIO * 4)
+    SPEED = np.array([ABS_SPEED, 0.0, 0.0])
+    
     SIZE = 14
 
     EYE_IMAGES_ORDER = ["right.png", "up.png", "left.png", "down.png"]
     BODY_IMAGES_ORDER = ["1.png", "2.png"]
 
+    COORDINATE = np.array([0, 0, Z])
 
     def __init__(self, color):
         self.COLOR = color

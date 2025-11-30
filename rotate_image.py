@@ -100,20 +100,22 @@ def rotate_image_3d(
     axis_point_3d,          # (ax, ay, az) 회전축이 지나는 한 점
     axis_dir_3d,            # (dx, dy, dz) 회전축 방향 벡터
     theta_rad,              # 회전각 (rad)
-    base_z=0.0,             # ✅ 이 이미지가 처음에 위치할 z값
+    base_z=0.0,             # 이 이미지가 처음에 위치할 z값
     cam_dist=1000.0,
 ):
     """
     pygame 이미지(surface)를 주어진 3D 회전축 기준으로 회전시키고,
     OpenCV 퍼스펙티브 워핑으로 새 surface와 blit할 위치를 반환.
 
-    base_z: 이미지 전체가 처음에 위치하는 z 좌표 (기본 0.0)
+    요구사항:
+      - theta = 0 일 때 base_z를 바꿔도 2D 위치/크기는 변하지 않음
+      - 회전은 axis_point_3d를 기준으로 공전하는 3D 회전
     """
     w, h = surface.get_size()
     cx, cy = img_center_2d
+    ax, ay, _ = axis_point_3d
 
-    # 1. 회전 전 이미지 4 꼭짓점의 3D 좌표
-    #    👉 z를 전부 base_z로 둔다
+    # 1. 회전 전 이미지 4 꼭짓점의 3D 좌표 (모두 z = base_z에서 시작)
     corners_3d = np.array(
         [
             [cx - w / 2.0, cy - h / 2.0, base_z],  # top-left
@@ -124,7 +126,7 @@ def rotate_image_3d(
         dtype=np.float32,
     )
 
-    # 2. 회전축 기준 3D 회전
+    # 2. 회전축 기준 3D 회전 (월드 좌표계에서)
     rotated_corners_3d = rodrigues_rotate(
         corners_3d,
         axis_point=np.array(axis_point_3d, dtype=np.float32),
@@ -132,10 +134,21 @@ def rotate_image_3d(
         theta=theta_rad,
     )
 
-    # 3. 3D -> 2D 투영
-    dst_pts_2d = project_points(rotated_corners_3d, cam_dist=cam_dist)  # (4,2)
+    # 3. 투영용 좌표계로 변환:
+    #    - x, y: 회전축(x=ax, y=ay)을 원점으로 이동
+    #    - z   : base_z 평면을 0으로 이동
+    points_for_proj = rotated_corners_3d.copy()
+    points_for_proj[:, 0] -= ax
+    points_for_proj[:, 1] -= ay
+    points_for_proj[:, 2] -= base_z
 
-    # 4. bounding box 계산
+    # 4. 3D -> 2D 투영 (축 근처 좌표계)
+    dst_pts_2d_rel = project_points(points_for_proj, cam_dist=cam_dist)  # (4,2)
+
+    # 5. 다시 화면 좌표계로 복귀 (축 위치를 다시 더해줌)
+    dst_pts_2d = dst_pts_2d_rel + np.array([ax, ay], dtype=np.float32)
+
+    # 6. bounding box 계산
     min_xy = np.floor(dst_pts_2d.min(axis=0)).astype(np.int32)
     max_xy = np.ceil(dst_pts_2d.max(axis=0)).astype(np.int32)
     dst_w, dst_h = (max_xy - min_xy).tolist()
@@ -146,6 +159,7 @@ def rotate_image_3d(
 
     dst_pts_local = dst_pts_2d - min_xy.astype(np.float32)
 
+    # 7. 원본 이미지의 2D 좌표 (로컬)
     src_pts = np.array(
         [
             [0.0, 0.0],
@@ -156,10 +170,13 @@ def rotate_image_3d(
         dtype=np.float32,
     )
 
+    # 8. Homography 계산
     M = cv2.getPerspectiveTransform(src_pts, dst_pts_local.astype(np.float32))
 
+    # 9. pygame Surface -> OpenCV RGBA
     img_rgba = pygame_surface_to_cv2_rgba(surface)
 
+    # 10. 퍼스펙티브 워핑
     warped_rgba = cv2.warpPerspective(
         img_rgba,
         M,
@@ -169,14 +186,13 @@ def rotate_image_3d(
         borderValue=(0, 0, 0, 0),
     )
 
+    # 11. 다시 pygame Surface로 변환
     rotated_surface = cv2_rgba_to_pygame_surface(warped_rgba)
+
+    # 최종 blit 위치 (화면 기준)
     dst_pos = (int(min_xy[0]), int(min_xy[1]))
 
     return rotated_surface, dst_pos
-
-# ---------------------------
-# 간단한 데모 (원하면 사용)
-# ---------------------------
 
 # ---------------------------
 # 여러 이미지를 화면 중심 축으로 3D 공전시키는 데모

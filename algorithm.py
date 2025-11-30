@@ -1,32 +1,10 @@
 import math
+import random
 import numpy as np
 from collections import deque
 import pygame
 from constant import Wall_data
 
-class Unit:
-    def move_to(self, current_coordinate, target_coordinate):
-        pass
-
-    def targeting(self, coordinate: np.array):
-        pass
-
-
-# red
-class Blinky(Unit):
-    pass
-
-# pink
-class Pinky(Unit):
-    pass
-
-# cyan
-class Lnky(Unit):
-    pass
-
-# orange
-class Clyde(Unit):
-    pass
 
 
 def add_img(li, n, theta, coordinate, color=Wall_data.COLOR, wall_data=Wall_data.IMAGES):

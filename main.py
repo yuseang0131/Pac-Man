@@ -2,6 +2,7 @@ from __future__ import annotations
 import sys
 import os
 import math
+import time
 import json
 import pygame
 import numpy as np
@@ -10,7 +11,7 @@ import algorithm
 from abc import ABC, abstractmethod
 from threading import Thread
 from collections import deque
-from rotate_image import rotate_image
+from rotate_image import rotate_image_3d
 
 from typing import Iterable
 
@@ -20,6 +21,9 @@ class Command_list:
     def __init__(self, max_len = 10):
         self.queue = deque({})
         self.max_len = max_len
+        
+    def __getitem__(self, index):
+        return self.queue[index]
 
     def append(self, command):
         if len(self.queue) == self.max_len:
@@ -80,7 +84,7 @@ class Getter(Interacter):
 class Image:
     CAM_DIST = Image_data.CAM_DIST
     F = Image_data.F
-    SCREEN_CENTER = Image_data.SCRENN_CENTER
+    SCREEN_CENTER = (float(Screen_data.WIDTH/2), float(Screen_data.HEIGHT/2), 0.0)
         
     def __init__(self, images: list[pygame.Surface], ratio: list, rate: int = 60, theta = 0):
         self.images_origin = images
@@ -108,7 +112,27 @@ class Image:
     def current(self, n):
         self.__number = n % self.length
         self.__current = self.images[self.__number]
+        
+    def get_rotate_state(self, coordinate, axis_point = SCREEN_CENTER, axis_dir = (0.0, 1.0, 0.0)):
+        rotated_img, pos = rotate_image_3d(
+                self.current,
+                img_center_2d=coordinate[:2],
+                axis_point_3d=axis_point,
+                axis_dir_3d=axis_dir,
+                theta_rad=self.theta,
+                base_z=coordinate[-1],
+                cam_dist=self.CAM_DIST,
+            )
+        
+        return rotated_img, pos
 
+    def rotate(self, d_theta):
+        d_theta = d_theta * math.pi / 180
+        self.theta = (self.theta + d_theta) % (180 / math.pi)
+    
+    def theta_to(self, theta):
+        self.theta = theta
+    
     @property
     def ratio(self):
         return self.__ratio
@@ -130,15 +154,6 @@ class Image:
     def get_rect(self, x, y, z=0):
         return self.images[0].get_rect(center= (x, y))
     
-    def rotate(self):
-        rotated_surf, pos = rotate_image(
-            self.current,
-            self.theta,
-            cam_dist=self.CAM_DIST,
-            f= self.F,
-            screen_center=self.SCREEN_CENTER
-        )
-        return rotated_surf, pos
 
     
 class All(ABC):
@@ -160,13 +175,14 @@ class All(ABC):
 
 class Unit(All):
     def __init__(self, coordinate: np.array, direction: float, speed: np.array,
-                 interact: Interacter, algorithm = algorithm.Unit,
+                 interact: Interacter,
                  images: list = [], ratio: float = 1, rate: int = 60, name: str = "", number: int = -1
                  ):
         All.__init__(self, coordinate, direction, ratio)
         
         self.speed = speed
         self.image = Image(images, ratio, rate= rate)
+        self.image_set = [self.image]
         self.interact = interact
         self.algorithm = algorithm
         
@@ -198,7 +214,8 @@ class Unit(All):
             return
         self.coordinate += self.speed/fps
 
-    def move_to(self, x, y, z= 0):
+    def move_to(self, x, y, z = None):
+        if not z: z = self.coordinate[2]
         self.coordinate = np.array([x, y, z])
 
     def turn_to(self, angle, speed):
@@ -210,7 +227,8 @@ class Unit(All):
         return True
 
     def draw(self, screen: pygame.surface.Surface):
-        screen.blit(self.image.current, self.image.get_rect(*self.coordinate))
+        img, pos = self.image.get_rotate_state(self.coordinate)
+        screen.blit(img, pos)
 
 
 class Item(All):
@@ -368,16 +386,18 @@ class Wall(All):
         self.image.turn_to(direction)
     
     def draw(self, screen: pygame.surface.Surface):
-        screen.blit(self.image.current, self.image.get_rect(*self.coordinate))
+        img, pos = self.image.get_rotate_state(self.coordinate)
+        
+        screen.blit(img, pos)
 
 class Map:
-    def __init__(self, grid: Grid, map_data: dict, color, block_gap, ratio, grid_show = False):
+    def __init__(self, grid: Grid, map_data: dict, color, block_gap, ratio, z = Z, grid_show = False):
         self.grid = grid
         self.map_data = map_data["map"]["map"]
         
         self.size = (map_data["map"]["size_x"], map_data["map"]["size_y"])
         
-        self.walls = self.load_wall(map_data, color, block_gap, ratio)
+        self.walls: list[Wall] = self.load_wall(map_data, color, block_gap, ratio, z)
         self.item: list[All] = self.load_item(map_data)
         
         self.collision_data = self.load_collision_data(map_data, self.size)
@@ -418,11 +438,12 @@ class Map:
         for wall in self.walls:
             wall.draw(screen)
             
-    def load_wall(self, data, color, block_gap, ratio):
+    def load_wall(self, data, color, block_gap, ratio, z):
         data = data["map"]["map"]
         walls = []
         for coordinate, theta, img in algorithm.wall_make(data, color):
             point = self.grid.center_points[coordinate[0] * (self.size[0]) + coordinate[1]].coordinate
+            point = (point[0], point[1], z)
             walls.append(Wall(point, theta, block_gap, ratio, [img]))
         
         return walls
@@ -456,10 +477,11 @@ class Map:
 
 class PacMan(Unit):
     def __init__(self, coordinate: np.array, direction: float, speed: np.array,
-                 interact: Interacter, algorithm: algorithm.Unit,
+                 interact: Interacter,
                  images: list = [], ratio: float = 1, rate: int = 60, name: str = "", number: int = -1):
-        super().__init__(coordinate, direction, speed, interact, algorithm, images[1:], ratio, rate, name=name, number=number)
+        super().__init__(coordinate, direction, speed, interact, images[1:], ratio, rate, name=name, number=number)
         self.wait_image = Image(images[0:1], ratio)
+        self.image_set = [self.image, self.wait_image]
 
     def turn_to(self, angle, speed):
         direction = self.direction
@@ -468,33 +490,33 @@ class PacMan(Unit):
 
 
 class Ghost(Unit):
+    STATE_CASE = [
+        "chase",
+        "scatter",
+        "eaten",
+        "frightened"
+    ]
+    
     def __init__(self, coordinate: np.array, direction: float, speed: np.array,
-                 interact: Interacter,
-                 algorithm: algorithm.Ghost, images_eye: list = [],
+                 interact: Interacter, images_eye: list = [],
                  images_body: list = [], ratio: float = 1, rate: int = 60, name: str = "", number: int = -1):
 
-        super().__init__(coordinate, direction, speed, interact, algorithm, images_body, ratio, rate, name=name, number=number)
-        self.algorithm = algorithm
+        super().__init__(coordinate, direction, speed, interact, images_body, ratio, rate, name=name, number=number)
         self.images_eye = Image(images_eye, ratio, rate=0)
+        self.image_set = [self.image, self.images_eye]
+        self.state = None
 
     def turn_to(self, angle, speed):
         if super().turn_to(angle, speed):
             self.images_eye.current = int(angle//(math.pi/2))
-
+            
+    def change_interecter(self, interecter: Interacter):
+        self.interact = interecter
 
     def draw(self, screen):
         super().draw(screen)
-        screen.blit(self.images_eye.current, self.image.get_rect(*self.coordinate))
-
-class Unit_generator:
-    pass
-
-class Wall_generator:
-    pass
-
-class Item_generator:
-    pass
-
+        img, pos = self.images_eye.get_rotate_state(self.coordinate)
+        screen.blit(img, pos)
 
 
 
@@ -506,9 +528,6 @@ class Main:
         
         with open(f"data/map/map{self.level}.json", 'r') as f:
             self.data = json.load(f)
-
-        self.thread = Thread(target=self.back_loop)
-        self.thread.start()
 
         self.clock = pygame.time.Clock()
         self.fps = fps
@@ -525,16 +544,18 @@ class Main:
         self.grid = Grid((self.screen_width/2, self.screen_height/2), 0, (self.data["map"]["size_x"], self.data["map"]["size_y"]), RATIO, Grid_data.BLOCK_GAP)
         self.current_point = None
         
-        self.map = Map(self.grid, self.data, Wall_data.COLOR, Grid_data.BLOCK_GAP, RATIO, self.show_grid)
+        self.map = Map(self.grid, self.data, Wall_data.COLOR, Grid_data.BLOCK_GAP, RATIO, z=Z, grid_show=self.show_grid)
         
         
+        self.rotate_state = False
+        self.rotate_time = 90
         
 
         # --------------------
         # Pac Man init
         # --------------------
         self.pacman = PacMan(PacMan_data.COORDINATE, PacMan_data.DIRECTION, PacMan_data.SPEED,
-                             Victim([0, 1, 1, 1, 1 ,1]), algorithm.Unit, PacMan_data.IMAGES,
+                             Victim([0, 1, 1, 1, 1 ,1]), PacMan_data.IMAGES,
                              RATIO,
                              PacMan_data.RATE, name=PacMan_data.NAME, number= PacMan_data.NUMBER)
         self.pacman.move_to(*self.map.grid.cross_points[10].coordinate)
@@ -544,31 +565,43 @@ class Main:
         # --------------------
         # Ghost init
         # --------------------
-        self.blinky = Ghost((self.screen_width/3, self.screen_height/3, 0), 0, 5,
-                            killer([1, 0, 0, 0, 0, 0]), algorithm.Blinky, Blinky_DATA.EYE_IMGAES,
-                            Blinky_DATA.BODY_IMAGES, RATIO, PacMan_data.RATE*2, name="Bilnky", number=2)
-        self.blinky.move_to(*self.map.grid.cross_points[-1].coordinate)
-        self.blinky.current_point = self.map.grid.cross_points[-1]
+        self.blinky = Ghost(Blinky_DATA.COORDINATE, 0, Ghost_data.SPEED,
+                            killer([1, 0, 0, 0, 0, 0]), Blinky_DATA.EYE_IMGAES,
+                            Blinky_DATA.BODY_IMAGES, RATIO, PacMan_data.RATE*2, name="Bilnky", number=2,)
+        self.blinky.move_to(*self.map.grid.cross_points[-5].coordinate)
+        self.blinky.current_point = self.map.grid.cross_points[-5]
         
         self.units: list[Unit] = [self.pacman, self.blinky]
+        self.ghosts = [self.blinky]
         
         
 
         # --------------------
         # command init
         # --------------------
-
-        self.last_move_command = None
         self.command_list = Command_list(max_len= 10)
+        self.last_move_command = None
+        
+        self.thread = Thread(target=self.back_loop)
+        self.thread.start()
 
 
 
     def reset(self):
-        
         pass
 
     def back_loop(self):
-        pass
+        while self.running:
+            if self.rotate_state:
+                print(1)
+                self.rotate_time -= 1
+                if self.rotate_time <= 0:
+                    self.rotate_state = False
+                    self.rotate_time = 0
+                self.rotate(1)
+            
+            time.sleep(0.01)
+        
 
     def loop(self, screen: pygame.surface.Surface):
         while self.running:
@@ -581,16 +614,18 @@ class Main:
 
                     if event.key == pygame.K_ESCAPE:
                         self.running = False
+                    
+                    if event.key == pygame.K_F5:
+                        self.reset()
+                        self.rotate_state = True
+                        self.rotate_time = 90
 
                     if event.key in [pygame.K_RIGHT, pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN]:
                         self.last_move_command = event.key
-            
-        
 
             self.update()
             self.turn_unit()
             self.draw(screen)            
-            
             
             self.clock.tick(self.fps)
             if self.show_fps:
@@ -615,20 +650,31 @@ class Main:
                 self.pacman.turn_to(180, PacMan_data.ABS_SPEED)
                 self.pacman.move_to(self.pacman[0], self.pacman.current_point[1])
 
+        for ghost in self.ghosts:
+            continue
+            if (ghost.current_point.distance_x(ghost[0]) <= self.judgment_distance or
+                ghost.current_point.distance_y(ghost[1]) <= self.judgment_distance):
+                ghost.turn_to(ghost.direction + 90, Ghost_data.ABS_SPEED)
+        
     def update(self):
         self.map.update()
-        self.pacman.current_point = self.map.cross_check(self.pacman)
         
         for unit in self.units:
+            unit.current_point = self.map.cross_check(unit)
             if self.map.is_wall(unit.current_point, unit.direction) and unit.current_point.distance(unit[0], unit[1]) <= self.judgment_distance:
                 unit.move_to(unit.current_point[0], unit.current_point[1])
             else:
                 unit.move(self.fps)
                 unit.image.change()
+                
+    def rotate(self, d_theta):
+        for unit in self.units:
+            for img in unit.image_set:
+                img.rotate(d_theta)
 
-        self.blinky.image.change()
-        
-    
+        for wall in self.map.walls:
+            wall.image.rotate(d_theta)
+
     def draw(self, screen: pygame.surface.Surface):
         screen.fill(Screen_data.COLOR)
 
