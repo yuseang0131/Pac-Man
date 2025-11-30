@@ -811,6 +811,9 @@ class Main:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
+                    
+                if self.state == 0:
+                    self.handle_opening_event(event)
 
                 if event.type == pygame.KEYDOWN:
                     if self.state == 0:
@@ -1003,34 +1006,74 @@ class Main:
                 unit.current_point.draw(screen)
 
     def show_opening(self, screen: pygame.surface.Surface):
-        # 타이틀/텍스트용 폰트
+        # --- 폰트 설정 ---
         title_font = pygame.font.SysFont("Arial", 72, True)
         sub_font   = pygame.font.SysFont("Arial", 32, True)
         info_font  = pygame.font.SysFont("Arial", 18)
 
-        blink = True
-        # ----- 그리기 -----
+        # --- START 버튼 Rect 초기화 (한 번만 계산) ---
+        if not hasattr(self, "start_button_rect"):
+            btn_w, btn_h = 260, 80
+            self.start_button_rect = pygame.Rect(0, 0, btn_w, btn_h)
+            self.start_button_rect.center = (
+                self.screen_width // 2,
+                self.screen_height * 3 // 4,
+            )
+
         screen.fill(Screen_data.COLOR)
 
-        # 타이틀
+        # ----- 타이틀 -----
         title_surf = title_font.render("CAP-MAN", True, (255, 255, 0))
-        title_rect = title_surf.get_rect(center=(self.screen_width // 2,
-                                                    self.screen_height // 4))
+        title_rect = title_surf.get_rect(
+            center=(self.screen_width // 2, self.screen_height // 4)
+        )
         screen.blit(title_surf, title_rect)
 
+        # ----- START 버튼 -----
+        mouse_pos = pygame.mouse.get_pos()
+        hovered = self.start_button_rect.collidepoint(mouse_pos)
 
-        # "아무 키나 눌러 시작" 깜빡이기
-        if blink:
-            press_surf = sub_font.render("Press any button to start", True, (255, 255, 255))
-            press_rect = press_surf.get_rect(center=(self.screen_width // 2,
-                                                        self.screen_height * 3 // 4))
-            screen.blit(press_surf, press_rect)
+        # 배경 색 (호버 시 살짝 밝게)
+        base_color   = (40, 40, 40)
+        hover_color  = (80, 80, 80)
+        border_color = (255, 255, 255)
 
-        # 하단에 조작 설명 (선택)
+        pygame.draw.rect(
+            screen,
+            hover_color if hovered else base_color,
+            self.start_button_rect,
+            border_radius=10,
+        )
+        pygame.draw.rect(
+            screen,
+            border_color,
+            self.start_button_rect,
+            width=3,
+            border_radius=10,
+        )
+
+        # 버튼 텍스트
+        start_surf = sub_font.render("START", True, (255, 255, 255))
+        start_rect = start_surf.get_rect(center=self.start_button_rect.center)
+        screen.blit(start_surf, start_rect)
+
+        # 하단에 조작 설명
         info_surf = info_font.render("ESC: exit   F5: restart", True, (200, 200, 200))
-        info_rect = info_surf.get_rect(center=(self.screen_width // 2,
-                                                self.screen_height - 30))
+        info_rect = info_surf.get_rect(
+            center=(self.screen_width // 2, self.screen_height - 30)
+        )
         screen.blit(info_surf, info_rect)
+
+    def handle_opening_event(self, event: pygame.event.EventType):
+        """
+        오프닝(state == 0) 상태에서만 호출해서
+        START 버튼 클릭을 감지하는 함수.
+        """
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            # start_button_rect 위를 클릭했는지 검사
+            if hasattr(self, "start_button_rect") and \
+            self.start_button_rect.collidepoint(event.pos):
+                self.state = 1  # 게임 시작 상태로 전환
 
     def count_down(self, screen, start_number, late = 1):
         # 반투명 어두운 오버레이
